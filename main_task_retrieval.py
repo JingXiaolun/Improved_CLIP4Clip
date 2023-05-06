@@ -99,6 +99,10 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--linear_patch', type=str, default="2d", choices=["2d", "3d"],
                         help="linear projection of flattened patches.")
     parser.add_argument('--se_block', type=str, action='store_true', help="whether to use squeeze and excitation module to determine enhance or suppress some video frame representations. ")
+    
+    parser.add_argument('--reduction_ratio', type=int,  default=4, choices=[2, 4, 6], help="Hyper-parameter used in se_block")
+    parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
+    
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
                         help="choice a similarity header.")

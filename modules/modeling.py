@@ -222,7 +222,11 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         # <=== End of CLIP Encoders
         
         # Squeeze and Excitation block ===>
+        self.se_flag = False
         if hasattr(task_config, 'se_block'):
+            self.se_flag = True
+            self.se_pos = task_config.se_pos
+
             frame_length = task_config.max_frames
             reduction_ratio = task_config.reduction_ratio
             self.se_block = SEBlock(frame_length, reduction_ratio)
@@ -328,6 +332,9 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         return sequence_output, visual_output
 
     def _get_cross_output(self, sequence_output, visual_output, attention_mask, video_mask):
+        # Introduce se_block in prefix position
+        if self.se_flag:
+            visual_output = self.se_block(visual_output)
 
         concat_features = torch.cat((sequence_output, visual_output), dim=1)  # concatnate tokens and frames
         concat_mask = torch.cat((attention_mask, video_mask), dim=1)
@@ -364,12 +371,19 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
     def _loose_similarity(self, sequence_output, visual_output, attention_mask, video_mask, sim_header="meanP"):
         sequence_output, visual_output = sequence_output.contiguous(), visual_output.contiguous()
 
-
         if sim_header == "meanP":
             # Default: Parameter-free type
+            ## Introduce se_block in prefix position
+            if self.se_flag:
+                visual_output = self.se_block(visual_output)
             pass
         elif sim_header == "seqLSTM":
             # Sequential type: LSTM
+            ## Introduce se_block in prefix position
+            if self.se_flag:
+                if self.se_pos=='prefix':
+                    visual_output = self.se_block(visual_output)
+                    
             visual_output_original = visual_output
             visual_output = pack_padded_sequence(visual_output, torch.sum(video_mask, dim=-1).cpu(),
                                                  batch_first=True, enforce_sorted=False)
@@ -380,8 +394,18 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output, _ = pad_packed_sequence(visual_output, batch_first=True)
             visual_output = torch.cat((visual_output, visual_output_original[:, visual_output.size(1):, ...].contiguous()), dim=1)
             visual_output = visual_output + visual_output_original
+            ## Introduce se_block in suffix position
+            if self.se_flag:
+                if self.se_pos=='suffix':
+                    visual_output = self.se_block(visual_output)
+
         elif sim_header == "seqTransf":
             # Sequential type: Transformer Encoder
+            ## Introduce se_block in prefix position
+            if self.se_flag:
+                if self.se_pos=='prefix':
+                    visual_output = self.se_block(visual_output)
+            
             visual_output_original = visual_output
             seq_length = visual_output.size(1)
             position_ids = torch.arange(seq_length, dtype=torch.long, device=visual_output.device)
@@ -395,6 +419,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = self.transformerClip(visual_output, extended_video_mask)
             visual_output = visual_output.permute(1, 0, 2)  # LND -> NLD
             visual_output = visual_output + visual_output_original
+            ## Introduce se_block in prefix position
+            if self.se_flag:
+                if self.se_pos=='suffix':
+                    visual_output = self.se_block(visual_output)
 
         if self.training:
             visual_output = allgather(visual_output, self.task_config)
@@ -467,6 +495,6 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             retrieve_logits = self._loose_similarity(sequence_output, visual_output, attention_mask, video_mask, sim_header=self.sim_header)
         else:
             assert self.sim_header in ["tightTransf"]
-            retrieve_logits = self._cross_similarity(sequence_output, visual_output, attention_mask, video_mask, )
+            retrieve_logits = self._cross_similarity(sequence_output, visual_output, attention_mask, video_mask)
 
         return retrieve_logits, contrastive_direction
