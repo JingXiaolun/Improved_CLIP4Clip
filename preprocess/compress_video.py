@@ -66,7 +66,8 @@ if __name__ == "__main__":
     input_video_path_list, output_video_path_list = prepare_input_output_pairs(input_root, output_root)
 
     print("Total video need to process: {}".format(len(input_video_path_list)))
-    num_works = cpu_count()
+    #num_works = cpu_count()
+    num_works = 32
     print("Begin with {}-core logical processor.".format(num_works))
 
     pool = Pool(num_works)

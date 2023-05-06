@@ -11,6 +11,8 @@ from modules.until_module import PreTrainedModel, AllGather, CrossEn
 from modules.module_cross import CrossModel, CrossConfig, Transformer as TransformerClip
 
 from modules.module_clip import CLIP, convert_weights
+from modules.module_se import SEBlock 
+
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
 logger = logging.getLogger(__name__)
@@ -218,12 +220,20 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
 
         convert_weights(self.clip)
         # <=== End of CLIP Encoders
+        
+        # Squeeze and Excitation block ===>
+        if hasattr(task_config, 'se_block'):
+            frame_length = task_config.max_frames
+            reduction_ratio = task_config.reduction_ratio
+            self.se_block = SEBlock(frame_length, reduction_ratio)
+        # <=== Squeeze and Excitation block
 
         self.sim_header = 'meanP'
         if hasattr(task_config, "sim_header"):
             self.sim_header = task_config.sim_header
             show_log(task_config, "\t sim_header: {}".format(self.sim_header))
-        if self.sim_header == "tightTransf": assert self.loose_type is False
+        if self.sim_header == "tightTransf": 
+            assert self.loose_type is False
 
         cross_config.max_position_embeddings = context_length
         if self.loose_type is False:
@@ -354,6 +364,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
     def _loose_similarity(self, sequence_output, visual_output, attention_mask, video_mask, sim_header="meanP"):
         sequence_output, visual_output = sequence_output.contiguous(), visual_output.contiguous()
 
+
         if sim_header == "meanP":
             # Default: Parameter-free type
             pass
@@ -362,8 +373,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output_original = visual_output
             visual_output = pack_padded_sequence(visual_output, torch.sum(video_mask, dim=-1).cpu(),
                                                  batch_first=True, enforce_sorted=False)
+            
             visual_output, _ = self.lstm_visual(visual_output)
-            if self.training: self.lstm_visual.flatten_parameters()
+            if self.training: 
+                self.lstm_visual.flatten_parameters()
             visual_output, _ = pad_packed_sequence(visual_output, batch_first=True)
             visual_output = torch.cat((visual_output, visual_output_original[:, visual_output.size(1):, ...].contiguous()), dim=1)
             visual_output = visual_output + visual_output_original
