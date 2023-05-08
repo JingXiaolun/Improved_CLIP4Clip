@@ -223,8 +223,9 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         
         # Squeeze and Excitation block ===>
         self.se_flag = False
-        if hasattr(task_config, 'se_block'):
+        if task_config.se_block:
             self.se_flag = True
+            logger.info('Use se block')
             self.se_pos = task_config.se_pos
 
             frame_length = task_config.max_frames

@@ -156,8 +156,8 @@ def set_seed_logger(args):
         os.makedirs(args.log_dir, exist_ok=True)
 
     now = datetime.now()
-    time_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    log_file_name = time_string + ' log.txt'
+    time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
+    log_file_name = time_string + '-log.txt'
     logger = get_logger(os.path.join(args.log_dir, log_file_name))
 
     if args.local_rank == 0:

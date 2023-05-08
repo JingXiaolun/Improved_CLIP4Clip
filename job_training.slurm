@@ -8,7 +8,7 @@
 #SBATCh -w node2
 #SBATCH --output=../Log/slurm_output/%j.out
 #SBATCH --error=../Log/slurm_output/%j.err
-#SBATCH -t 100:00:00                            
+#SBATCH -t 50:00:00                            
 #SBATCH --mail-type=end
 #SBATCH --mail-user=jingxiaolun@sjtu.edu.cn
 
