@@ -3,6 +3,7 @@
 # description: SE Block(squeeze and excitation)
 # paper: https://arxiv.org/pdf/1709.01507.pdf(Squeeze-and-Excitation Networks)
 
+import torch
 import torch.nn as nn
 
 class SEBlock(nn.Module):
@@ -16,17 +17,17 @@ class SEBlock(nn.Module):
 
         # reducetion + expansion
         self.fc = nn.Sequential(
-                nn.Linear(frame_length, frame_length // r),
+                nn.Linear(frame_length, frame_length // reduction_ratio),
                 nn.ReLU(inplace=True),
-                nn.Linear(frame_length // r, frame_length),
+                nn.Linear(frame_length // reduction_ratio, frame_length),
                 nn.Sigmoid()
                 )
         
         ## expansion + reduction
         #self.fc = nn.Sequential(
-        #        nn.Linear(frame_length, frame_length * r),
+        #        nn.Linear(frame_length, frame_length * reduction_ratio),
         #        nn.ReLU(inplace=True),
-        #        nn.Linear(frame_length * r, frame_length),
+        #        nn.Linear(frame_length * reduction_ratio, frame_length),
         #        nn.Sigmoid()
         #        )
 

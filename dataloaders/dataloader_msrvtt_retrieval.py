@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import os
+import torch
 from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
@@ -91,12 +92,16 @@ class MSRVTT_DataLoader(Dataset):
 
         for i, video_id in enumerate(choice_video_ids):
             # Individual for YoucokII dataset, due to it video format
-            video_path = os.path.join(self.features_path, "{}.mp4".format(video_id))
-            if os.path.exists(video_path) is False:
-                video_path = video_path.replace(".mp4", ".webm")
+            #video_path = os.path.join(self.features_path, "{}.mp4".format(video_id))
+            #if os.path.exists(video_path) is False:
+            #    video_path = video_path.replace(".mp4", ".webm")
 
-            raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
-            raw_video_data = raw_video_data['video']
+            video_path = os.path.join(self.features_path, "{}.npz".format(video_id))
+            
+            #raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
+            #raw_video_data = raw_video_data['video']
+            raw_video_data = torch.from_numpy(np.load(video_path, allow_pickle=True)['arr_0'])
+            
             if len(raw_video_data.shape) > 3:
                 raw_video_data_clip = raw_video_data
                 # L x T x 3 x H x W
@@ -253,12 +258,16 @@ class MSRVTT_TrainDataLoader(Dataset):
 
         for i, video_id in enumerate(choice_video_ids):
             # Individual for YoucokII dataset, due to it video format
-            video_path = os.path.join(self.features_path, "{}.mp4".format(video_id))
-            if os.path.exists(video_path) is False:
-                video_path = video_path.replace(".mp4", ".webm")
+            #video_path = os.path.join(self.features_path, "{}.mp4".format(video_id))
+            #if os.path.exists(video_path) is False:
+            #    video_path = video_path.replace(".mp4", ".webm")
+            video_path = os.path.join(self.features_path, "{}.npz".format(video_id))
 
-            raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
-            raw_video_data = raw_video_data['video']
+            #raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
+            #raw_video_data = raw_video_data['video']
+
+            raw_video_data = torch.from_numpy(np.load(video_path, allow_pickle=True)['arr_0'])
+            
             if len(raw_video_data.shape) > 3:
                 raw_video_data_clip = raw_video_data
                 # L x T x 3 x H x W

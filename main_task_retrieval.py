@@ -3,12 +3,16 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import warnings
+warnings.filterwarnings('ignore')
+
 import torch
 import numpy as np
 import random
 import os
 from metrics import compute_metrics, tensor_text_to_video_metrics, tensor_video_to_text_sim
 import time
+from datetime import datetime
 import argparse
 from modules.tokenization_clip import SimpleTokenizer as ClipTokenizer
 from modules.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
@@ -51,7 +55,9 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--n_pair', type=int, default=1, help='Num of pair to output from data loader')
 
     parser.add_argument("--output_dir", default=None, type=str, required=True,
-                        help="The output directory where the model predictions and checkpoints will be written.")
+                        help="The output directory where the checkpoints will be written.")
+    parser.add_argument("--log_dir", default=None, type=str, required=True,
+                        help="The log directory where the model predictions will be written.")
     parser.add_argument("--cross_model", default="cross-base", type=str, required=False, help="Cross module")
     parser.add_argument("--init_model", default=None, type=str, required=False, help="Initial model.")
     parser.add_argument("--resume_model", default=None, type=str, required=False, help="Resume train model.")
@@ -98,7 +104,7 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
                         help="0: cut from head frames; 1: cut from tail frames; 2: extract frames uniformly.")
     parser.add_argument('--linear_patch', type=str, default="2d", choices=["2d", "3d"],
                         help="linear projection of flattened patches.")
-    parser.add_argument('--se_block', type=str, action='store_true', help="whether to use squeeze and excitation module to determine enhance or suppress some video frame representations. ")
+    parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation module to determine enhance or suppress some video frame representations. ")
     
     parser.add_argument('--reduction_ratio', type=int,  default=4, choices=[2, 4, 6], help="Hyper-parameter used in se_block")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
@@ -145,8 +151,14 @@ def set_seed_logger(args):
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir, exist_ok=True)
+    
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir, exist_ok=True)
 
-    logger = get_logger(os.path.join(args.output_dir, "log.txt"))
+    now = datetime.now()
+    time_string = now.strftime("%Y-%m-%d %H:%M:%S")
+    log_file_name = time_string + ' log.txt'
+    logger = get_logger(os.path.join(args.log_dir, log_file_name))
 
     if args.local_rank == 0:
         logger.info("Effective parameters:")
