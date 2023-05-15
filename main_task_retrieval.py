@@ -8,6 +8,7 @@ warnings.filterwarnings('ignore')
 
 import torch
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 import random
 import os
 from metrics import compute_metrics, tensor_text_to_video_metrics, tensor_video_to_text_sim
@@ -58,6 +59,8 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
                         help="The output directory where the checkpoints will be written.")
     parser.add_argument("--log_dir", default=None, type=str, required=True,
                         help="The log directory where the model predictions will be written.")
+    parser.add_argument("--visualize_dir", default=None, type=str, required=True,
+                        help="The visualize directory where the model output will be written and will use tensorboard to complete visualization.")
     parser.add_argument("--cross_model", default="cross-base", type=str, required=False, help="Cross module")
     parser.add_argument("--init_model", default=None, type=str, required=False, help="Initial model.")
     parser.add_argument("--resume_model", default=None, type=str, required=False, help="Resume train model.")
@@ -104,10 +107,12 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
                         help="0: cut from head frames; 1: cut from tail frames; 2: extract frames uniformly.")
     parser.add_argument('--linear_patch', type=str, default="2d", choices=["2d", "3d"],
                         help="linear projection of flattened patches.")
-    parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation module to determine enhance or suppress some video frame representations. ")
     
-    parser.add_argument('--reduction_ratio', type=int,  default=4, choices=[2, 4, 6], help="Hyper-parameter used in se_block")
+    parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation relevant module to determine enhance or suppress some video frame representations. ")
+    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation. ")
+    parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
+    parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 4.0, 6.0], help="Hyper-parameter used in se_block")
     
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
@@ -149,12 +154,21 @@ def set_seed_logger(args):
     rank = torch.distributed.get_rank()
     args.rank = rank
 
-    if not os.path.exists(args.output_dir):
+    if os.path.exists(args.output_dir):
+        os.system(f'rm -rf {args.output_dir}/*')
+    else:
         os.makedirs(args.output_dir, exist_ok=True)
     
-    if not os.path.exists(args.log_dir):
+    if os.path.exists(args.log_dir):
+        os.system(f'rm -rf {args.log_dir}/*')
+    else:
         os.makedirs(args.log_dir, exist_ok=True)
 
+    if os.path.exists(args.visualize_dir):
+        os.system(f'rm -rf {args.visualize_dir}/*')
+    else:
+        os.makedirs(args.visualize_dir, exist_ok=True)
+    
     now = datetime.now()
     time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
     log_file_name = time_string + '-log.txt'
@@ -266,7 +280,7 @@ def load_model(epoch, args, n_gpu, device, model_file=None):
         model = None
     return model
 
-def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, scheduler, global_step, local_rank=0):
+def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, scheduler, global_step, local_rank, writer):
     global logger
     # avoid out of memory in batch training
     torch.cuda.empty_cache()
@@ -306,8 +320,10 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
                 torch.clamp_(model.module.clip.logit_scale.data, max=np.log(100))
             else:
                 torch.clamp_(model.clip.logit_scale.data, max=np.log(100))
-
+            
+            writer.add_scalar('Train/Loss_step', loss, global_step)
             global_step += 1
+            
             if global_step % log_step == 0 and local_rank == 0:
                 logger.info("Epoch: %d/%s, Step: %d/%d, Lr: %s, Loss: %f, Time/step: %f", epoch + 1,
                             args.epochs, step + 1,
@@ -336,7 +352,7 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         sim_matrix.append(each_row)
     return sim_matrix
 
-def eval_epoch(args, model, test_dataloader, device, n_gpu):
+def eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer):
 
     if hasattr(model, 'module'):
         model = model.module.to(device)
@@ -467,6 +483,12 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
         tv_metrics = compute_metrics(sim_matrix)
         vt_metrics = compute_metrics(sim_matrix.T)
         logger.info('\t Length-T: {}, Length-V:{}'.format(len(sim_matrix), len(sim_matrix[0])))
+    
+    writer.add_scalars('Val/R1', {'Text2Video': tv_metrics['R1'], 'Video2Text': vt_metrics['R1']}, epoch)  
+    writer.add_scalars('Val/R5', {'Text2Video': tv_metrics['R5'], 'Video2Text': vt_metrics['R5']}, epoch)  
+    writer.add_scalars('Val/R10', {'Text2Video': tv_metrics['R10'], 'Video2Text': vt_metrics['R10']}, epoch)  
+    writer.add_scalars('Val/MeanR', {'Text2Video': tv_metrics['MeanR'], 'Video2Text': vt_metrics['MeanR']}, epoch)  
+    writer.add_scalars('Val/MedianR', {'Text2Video': tv_metrics['MR'], 'Video2Text': vt_metrics['MR']}, epoch)  
 
     logger.info("Text-to-Video:")
     logger.info('\t>>>  R@1: {:.1f} - R@5: {:.1f} - R@10: {:.1f} - Median R: {:.1f} - Mean R: {:.1f}'.
@@ -488,6 +510,11 @@ def main():
 
     assert  args.task_type == "retrieval"
     model = init_model(args, device, n_gpu, args.local_rank)
+
+    ## ###################################
+    # visualize dir
+    ## ###################################
+    writer = SummaryWriter(args.visualize_dir)
 
     ## ####################################
     # freeze testing
@@ -572,7 +599,9 @@ def main():
         for epoch in range(resumed_epoch, args.epochs):
             train_sampler.set_epoch(epoch)
             tr_loss, global_step = train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer,
-                                               scheduler, global_step, local_rank=args.local_rank)
+                                               scheduler, global_step, local_rank=args.local_rank, writer=writer)
+            writer.add_scalar('Train/Loss_total', tr_loss, epoch)
+            
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
 
@@ -580,22 +609,23 @@ def main():
 
                 ## Run on val dataset, this process is *TIME-consuming*.
                 # logger.info("Eval on val dataset")
-                # R1 = eval_epoch(args, model, val_dataloader, device, n_gpu)
+                # R1 = eval_epoch(epoch, args, model, val_dataloader, device, n_gpu, writer)
 
-                R1 = eval_epoch(args, model, test_dataloader, device, n_gpu)
+                R1 = eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer)
                 if best_score <= R1:
                     best_score = R1
                     best_output_model_file = output_model_file
+                writer.add_scalar('Val/best_score', best_score, epoch)
                 logger.info("The best model is: {}, the R1 is: {:.4f}".format(best_output_model_file, best_score))
 
         ## Uncomment if want to test on the best checkpoint
         # if args.local_rank == 0:
         #     model = load_model(-1, args, n_gpu, device, model_file=best_output_model_file)
-        #     eval_epoch(args, model, test_dataloader, device, n_gpu)
+        #     eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer)
 
     elif args.do_eval:
         if args.local_rank == 0:
-            eval_epoch(args, model, test_dataloader, device, n_gpu)
+            eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer)
 
 if __name__ == "__main__":
     main()
