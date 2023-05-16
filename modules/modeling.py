@@ -229,6 +229,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             self.se_flag = True
             self.se_pos = task_config.se_pos
             self.se_type = task_config.se_type
+            assert self.se_type in ['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation']
 
             frame_length = task_config.max_frames
             reduction_ratio = task_config.reduction_ratio
@@ -267,6 +268,26 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
                 elif self.excitation_aggregation_type=='expand_squeeze':
                     self.se_block = Expand_Excitation_Squeeze_Aggregation_Block(frame_length, reduction_ratio)
                     logger.info(f'use expand excitation and squeeze aggregation block')
+            # Excitation + seq +  Aggregation Block
+            elif self.se_type=='excitation_seq_aggregation':
+                self.excitation_seq_aggregation_type = task_config.excitation_seq_aggregation_type
+                if self.excitation_seq_aggregation_type=='unity':
+                    self.se_block_excitation = Excitation_Block(frame_length, reduction_ratio, activation)
+                    self.se_block_aggregation = Aggregation_Block(frame_length, reduction_ratio, activation)
+                    if reduction_ratio > 1:
+                        logger.info(f'use squeeze excitation + seq + aggregation block')
+                    else:
+                        logger.info(f'use expand excitation + seq + aggregation block')
+                elif self.excitation_seq_aggregation_type=='squeeze_expand':
+                    excitation_act, aggregation_act = nn.ReLU(inplace=True), nn.ReLU6(inplace=True)
+                    self.se_block_excitation = Excitation_Block(frame_length, reduction_ratio, excitation_act)
+                    self.se_block_aggregation = Aggregation_Block(frame_length, 1/reduction_ratio, aggregation_act)
+                    logger.info(f'use squeeze excitation + seq + expand aggregation block')
+                elif self.excitation_seq_aggregation_type=='expand_squeeze':
+                    excitation_act, aggregation_act = nn.ReLU6(inplace=True), nn.ReLU(inplace=True)
+                    self.se_block_excitation = Excitation_Block(frame_length, reduction_ratio, excitation_act)
+                    self.se_block_aggregation = Aggregation_Block(frame_length, 1/reduction_ratio, aggregation_act)
+                    logger.info(f'use expand excitation + seq + squeeze aggregation block')
         # <=== Squeeze and Excitation block
 
         self.sim_header = 'meanP'
@@ -411,6 +432,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         if sim_header == "meanP":
             pass
         elif sim_header == "seqLSTM":
+            # excitation implementation
+            if self.se_type=='excitation_seq_aggregation':
+                visual_output = self.se_block_excitation(visual_output)
+
             # Sequential type: LSTM
             visual_output_original = visual_output
             visual_output = pack_padded_sequence(visual_output, torch.sum(video_mask, dim=-1).cpu(),
@@ -423,7 +448,14 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = torch.cat((visual_output, visual_output_original[:, visual_output.size(1):, ...].contiguous()), dim=1)
             visual_output = visual_output + visual_output_original
 
+            # aggregation implementation
+            if self.se_type=='excitation_seq_aggregation':
+                visual_output = self.se_block_aggregation(visual_output)
         elif sim_header == "seqTransf":
+            # excitation implementation
+            if self.se_type=='excitation_seq_aggregation':
+                visual_output = self.se_block_excitation(visual_output)
+            
             # Sequential type: Transformer Encoder
             visual_output_original = visual_output
             seq_length = visual_output.size(1)
@@ -439,21 +471,29 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = visual_output.permute(1, 0, 2)  # LND -> NLD
             visual_output = visual_output + visual_output_original
 
+            # aggregation implementation
+            if self.se_type=='excitation_seq_aggregation':
+                visual_output = self.se_block_aggregation(visual_output)
+        
         if self.training:
             visual_output = allgather(visual_output, self.task_config)
             video_mask = allgather(video_mask, self.task_config)
             sequence_output = allgather(sequence_output, self.task_config)
             torch.distributed.barrier()
 
-        visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
-        # use squeeze and excitation relevant module  
-        if self.se_flag:
-            visual_output = self.se_block(visual_output)
-            if len(visual_output.shape)==3:
-                visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
+        if len(visual_output.shape)==2:
+            assert self.se_type=='excitation_seq_aggregation', 'visual_output must be 2D tensor when excitation_seq_aggregation is implemented'
+            visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
         else:
-            visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
-        visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
+            visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
+            # use squeeze and excitation relevant module  
+            if self.se_flag:
+                visual_output = self.se_block(visual_output)
+                if len(visual_output.shape)==3:
+                    visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
+            else:
+                visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
+            visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
 
         sequence_output = sequence_output.squeeze(1)
         sequence_output = sequence_output / sequence_output.norm(dim=-1, keepdim=True)

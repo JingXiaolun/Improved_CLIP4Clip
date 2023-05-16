@@ -109,8 +109,9 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
                         help="linear projection of flattened patches.")
     
     parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation relevant module to determine enhance or suppress some video frame representations. ")
-    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation. ")
+    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation, 'excitation_seq_aggregation' denote excitation + seqLSTM/seqTransf + aggregation . ")
     parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
+    parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
     parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 4.0, 6.0], help="Hyper-parameter used in se_block")
     
