@@ -13,7 +13,7 @@ import random
 import os
 from metrics import compute_metrics, tensor_text_to_video_metrics, tensor_video_to_text_sim
 import time
-from datetime import datetime
+import datetime
 import argparse
 from modules.tokenization_clip import SimpleTokenizer as ClipTokenizer
 from modules.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
@@ -23,6 +23,7 @@ from modules.optimization import BertAdam
 from util import parallel_apply, get_logger
 from dataloaders.data_dataloaders import DATALOADER_DICT
 
+#torch.distributed.init_process_group(backend="nccl",  timeout=datetime.timedelta(seconds=5400))
 torch.distributed.init_process_group(backend="nccl")
 
 global logger
@@ -170,7 +171,7 @@ def set_seed_logger(args):
     else:
         os.makedirs(args.visualize_dir, exist_ok=True)
     
-    now = datetime.now()
+    now = datetime.datetime.now()
     time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
     log_file_name = time_string + '-log.txt'
     logger = get_logger(os.path.join(args.log_dir, log_file_name))

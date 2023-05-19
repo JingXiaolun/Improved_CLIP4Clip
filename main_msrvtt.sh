@@ -420,10 +420,10 @@
 #--se_block --se_type excitation_aggregation --reduction_ratio 4 \
 #--pretrained_clip_name ViT-B/32
 
-# LooseType-seqTransf (use expand excitation and aggregation)
+## LooseType-seqTransf (use expand excitation and aggregation)
 #FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
 #VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
-#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29501' \
+#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29502' \
 #main_task_retrieval.py --do_train --num_thread_reader=0 \
 #--epochs=5 --batch_size=128 --n_display=50 \
 #--train_csv ${FILE_DATA_PATH}/MSRVTT_train.9k.csv \
@@ -445,7 +445,7 @@
 ## LooseType-seqTransf (use squeeze excitation and expand aggregation)
 #FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
 #VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
-#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29502' \
+#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29501' \
 #main_task_retrieval.py --do_train --num_thread_reader=0 \
 #--epochs=5 --batch_size=128 --n_display=50 \
 #--train_csv ${FILE_DATA_PATH}/MSRVTT_train.9k.csv \
@@ -555,7 +555,7 @@
 ## LooseType-seqTransf (use expand excitation + seq + squeeze aggregation)
 #FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
 #VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
-#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29505' \
+#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29506' \
 #main_task_retrieval.py --do_train --num_thread_reader=0 \
 #--epochs=5 --batch_size=128 --n_display=50 \
 #--train_csv ${FILE_DATA_PATH}/MSRVTT_train.9k.csv \
@@ -573,3 +573,51 @@
 #--loose_type --linear_patch 2d --sim_header seqTransf \
 #--se_block --se_type excitation_seq_aggregation --excitation_seq_aggregation_type expand_squeeze --reduction_ratio 0.25 \
 #--pretrained_clip_name ViT-B/32
+
+#################################################################################################################################################################################
+#################################################################################################################################################################################
+### TightType-tightTransf (squeeze excitation)
+#FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
+#VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
+#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29503' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=128 --n_display=50 \
+#--train_csv ${FILE_DATA_PATH}/MSRVTT_train.9k.csv \
+#--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
+#--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
+#--features_path ${VIDEO_DATA_PATH}/video_frame_input \
+#--output_dir ../Model/Squeeze_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--log_dir ../Log/Squeeze_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--visualize_dir ../Visualize/Log/Squeeze_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--lr 1e-4 --max_words 32 --max_frames 12 --batch_size_val 16 \
+#--datatype msrvtt \
+#--expand_msrvtt_sentences  \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--linear_patch 2d --sim_header tightTransf \
+#--se_block --reduction_ratio 4 
+#--pretrained_clip_name ViT-B/32
+
+### TightType-tightTransf (expand excitation)
+#FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
+#VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
+#python -m torch.distributed.launch --nproc_per_node=4 --master_port='29503' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=128 --n_display=50 \
+#--train_csv ${FILE_DATA_PATH}/MSRVTT_train.9k.csv \
+#--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
+#--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
+#--features_path ${VIDEO_DATA_PATH}/video_frame_input \
+#--output_dir ../Model/Expand_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--log_dir ../Log/Expand_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--visualize_dir ../Visualize/Log/Expand_Excitation_Improved/msrvtt_retrieval_tightTransf \
+#--lr 1e-4 --max_words 32 --max_frames 12 --batch_size_val 16 \
+#--datatype msrvtt \
+#--expand_msrvtt_sentences  \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--linear_patch 2d --sim_header tightTransf \
+#--se_block --reduction_ratio 0.25 
+#--pretrained_clip_name ViT-B/32
+
+

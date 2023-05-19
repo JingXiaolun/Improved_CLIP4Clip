@@ -390,9 +390,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         return sequence_output, visual_output
 
     def _get_cross_output(self, sequence_output, visual_output, attention_mask, video_mask):
-        ## Introduce se_block in prefix position
-        #if self.se_flag:
-        #    visual_output = self.se_block(visual_output)
+        # Introduce se_block in prefix position
+        if self.se_flag:
+            if self.se_type=='excitation':
+                visual_output = self.se_block(visual_output)
 
         concat_features = torch.cat((sequence_output, visual_output), dim=1)  # concatnate tokens and frames
         concat_mask = torch.cat((attention_mask, video_mask), dim=1)
@@ -433,8 +434,9 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             pass
         elif sim_header == "seqLSTM":
             # excitation implementation
-            if self.se_type=='excitation_seq_aggregation':
-                visual_output = self.se_block_excitation(visual_output)
+            if self.se_flag:
+                if self.se_type=='excitation_seq_aggregation':
+                    visual_output = self.se_block_excitation(visual_output)
 
             # Sequential type: LSTM
             visual_output_original = visual_output
@@ -449,12 +451,14 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = visual_output + visual_output_original
 
             # aggregation implementation
-            if self.se_type=='excitation_seq_aggregation':
-                visual_output = self.se_block_aggregation(visual_output)
+            if self.se_flag:
+                if self.se_type=='excitation_seq_aggregation':
+                    visual_output = self.se_block_aggregation(visual_output)
         elif sim_header == "seqTransf":
             # excitation implementation
-            if self.se_type=='excitation_seq_aggregation':
-                visual_output = self.se_block_excitation(visual_output)
+            if self.se_flag:
+                if self.se_type=='excitation_seq_aggregation':
+                    visual_output = self.se_block_excitation(visual_output)
             
             # Sequential type: Transformer Encoder
             visual_output_original = visual_output
@@ -472,8 +476,9 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = visual_output + visual_output_original
 
             # aggregation implementation
-            if self.se_type=='excitation_seq_aggregation':
-                visual_output = self.se_block_aggregation(visual_output)
+            if self.se_flag:
+                if self.se_type=='excitation_seq_aggregation':
+                    visual_output = self.se_block_aggregation(visual_output)
         
         if self.training:
             visual_output = allgather(visual_output, self.task_config)
