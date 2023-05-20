@@ -223,13 +223,13 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         # <=== End of CLIP Encoders
         
         # Squeeze and Excitation block ===>
-        ## including Excitation Block, Aggregation Block, Excitation and Aggregation Block (squeeze / expand)
+        ## including Excitation Block, Aggregation Block, Excitation_Aggregation Block (squeeze / expand), Excitatin_Seq_Aggregatioon Block and Excitation_Seq block
         self.se_flag = False
         if task_config.se_block:
             self.se_flag = True
             self.se_pos = task_config.se_pos
             self.se_type = task_config.se_type
-            assert self.se_type in ['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation']
+            assert self.se_type in ['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation', 'excitation_seq']
 
             frame_length = task_config.max_frames
             reduction_ratio = task_config.reduction_ratio
@@ -288,6 +288,14 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
                     self.se_block_excitation = Excitation_Block(frame_length, reduction_ratio, excitation_act)
                     self.se_block_aggregation = Aggregation_Block(frame_length, 1/reduction_ratio, aggregation_act)
                     logger.info(f'use expand excitation + seq + squeeze aggregation block')
+            # Excitation + seq + meanP
+            elif self.se_type=='excitation_seq':
+                self.se_block_excitation = Excitation_Block(frame_length, reduction_ratio, activation)
+                if reduction_ratio > 1:
+                    logger.info(f'use squeeze excitation + seq + meanP')
+                else:
+                    logger.info(f'use expand excitation + seq + meanP')
+
         # <=== Squeeze and Excitation block
 
         self.sim_header = 'meanP'
@@ -435,7 +443,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         elif sim_header == "seqLSTM":
             # excitation implementation
             if self.se_flag:
-                if self.se_type=='excitation_seq_aggregation':
+                if self.se_type in ['excitation_seq_aggregation', 'excitation_seq']:
                     visual_output = self.se_block_excitation(visual_output)
 
             # Sequential type: LSTM
@@ -457,7 +465,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         elif sim_header == "seqTransf":
             # excitation implementation
             if self.se_flag:
-                if self.se_type=='excitation_seq_aggregation':
+                if self.se_type in ['excitation_seq_aggregation', 'excitation_seq']:
                     visual_output = self.se_block_excitation(visual_output)
             
             # Sequential type: Transformer Encoder
@@ -493,9 +501,12 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
             # use squeeze and excitation relevant module  
             if self.se_flag:
-                visual_output = self.se_block(visual_output)
-                if len(visual_output.shape)==3:
+                if self.se_type=='excitation_seq':
                     visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
+                else:
+                    visual_output = self.se_block(visual_output)
+                    if len(visual_output.shape)==3:
+                        visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
             else:
                 visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
             visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)

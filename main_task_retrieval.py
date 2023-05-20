@@ -110,7 +110,7 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
                         help="linear projection of flattened patches.")
     
     parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation relevant module to determine enhance or suppress some video frame representations. ")
-    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation, 'excitation_seq_aggregation' denote excitation + seqLSTM/seqTransf + aggregation . ")
+    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation', 'excitation_seq'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation, 'excitation_seq_aggregation' denote excitation + seqLSTM/seqTransf + aggregation, 'excitation_seq' denote excitation + seqLSTM/seqTransf + meanP. ")
     parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
     parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
@@ -252,10 +252,17 @@ def prep_optimizer(args, model, num_train_optimization_steps, device, n_gpu, loc
 def save_model(epoch, args, model, optimizer, tr_loss, type_name=""):
     # Only save the model it-self
     model_to_save = model.module if hasattr(model, 'module') else model
-    output_model_file = os.path.join(
-        args.output_dir, "pytorch_model.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
-    optimizer_state_file = os.path.join(
-        args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
+    
+    # save all model
+    ##output_model_file = os.path.join(
+    ##    args.output_dir, "pytorch_model.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
+    ##optimizer_state_file = os.path.join(
+    ##    args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
+    
+    # save best model and optimizer (standard: text-to-video R@1)
+    output_model_file = os.path.join(args.output_dir, "pytorch_model_best.bin")
+    optimizer_state_file = os.path.join(args.output_dir, "pytorch_opt_best.bin")
+
     torch.save(model_to_save.state_dict(), output_model_file)
     torch.save({
             'epoch': epoch,
@@ -607,7 +614,7 @@ def main():
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
 
-                output_model_file = save_model(epoch, args, model, optimizer, tr_loss, type_name="")
+                #output_model_file = save_model(epoch, args, model, optimizer, tr_loss, type_name="")
 
                 ## Run on val dataset, this process is *TIME-consuming*.
                 # logger.info("Eval on val dataset")
@@ -615,8 +622,12 @@ def main():
 
                 R1 = eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer)
                 if best_score <= R1:
+                    # save best model instead of all model
+                    output_model_file = save_model(epoch, args, model, optimizer, tr_loss, type_name="")
+                    
                     best_score = R1
                     best_output_model_file = output_model_file
+
                 writer.add_scalar('Val/best_score', best_score, epoch)
                 logger.info("The best model is: {}, the R1 is: {:.4f}".format(best_output_model_file, best_score))
 
