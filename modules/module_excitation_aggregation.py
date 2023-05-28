@@ -30,6 +30,7 @@ class Excitation_Block(nn.Module):
         weight = self.avgpool(x).contiguous().view(b, -1)
         # step2: excitation
         weight = self.fc(weight).contiguous().view(b, n, 1)
+        print('weight_exc:', weight.squeeze().data)
         # step3: scale
         out = x * weight
         return out
@@ -58,6 +59,7 @@ class Aggregation_Block(nn.Module):
         weight = self.avgpool(x).contiguous().view(b, -1)
         # step2: excitation
         weight = self.fc(weight).contiguous().view(b, n)
+        print('weight_agg:', weight.data)
         # step3: aggregate
         out = torch.einsum('b n d, b n -> b d', x, weight)
         return out

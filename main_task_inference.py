@@ -1,5 +1,5 @@
 # author: jingxiaolun
-# date: 2023.05.20
+# date: 2023.05.28
 # description: retrieval task inference
 
 from __future__ import absolute_import
@@ -31,36 +31,44 @@ global logger
 def get_args(description='CLIP4Clip on Retrieval Task'):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--do_eval", action='store_true', help="Whether to run eval on the dev set.")
+    parser.add_argument('--num_thread_reader', type=int, default=1, help='')
 
     parser.add_argument('--val_csv', type=str, default='data/.val.csv', help='')
     parser.add_argument('--data_path', type=str, default='data/caption.pickle', help='data pickle file path')
     parser.add_argument('--features_path', type=str, default='data/videos_feature.pickle', help='feature path')
 
-    parser.add_argument('--batch_size_val', type=int, default=3500, help='batch size eval')
+    parser.add_argument('--batch_size_val', type=int, default=16, help='batch size eval')
     parser.add_argument('--video_dim', type=int, default=1024, help='video feature dimension')
-    parser.add_argument('--max_words', type=int, default=20, help='')
-    parser.add_argument('--max_frames', type=int, default=100, help='')
+    parser.add_argument('--max_words', type=int, default=32, help='')
+    parser.add_argument('--max_frames', type=int, default=12, help='')
     parser.add_argument('--feature_framerate', type=int, default=1, help='')
     parser.add_argument('--margin', type=float, default=0.1, help='margin for loss')
     parser.add_argument('--hard_negative_rate', type=float, default=0.5, help='rate of intra negative sample')
     parser.add_argument('--negative_weighting', type=int, default=1, help='Weight the loss for intra negative')
     parser.add_argument('--n_pair', type=int, default=1, help='Num of pair to output from data loader')
 
-    parser.add_argument("--output_dir", default=None, type=str, required=True,
+    parser.add_argument("--load_dir", default='../Model/Squeeze_Excitation_Improved/msrvtt_retrieval_looseType_meanP', type=str, required=False,
                         help="The output directory where the checkpoints will be written.")
-    parser.add_argument("--cross_model", default="cross-base", type=str, required=False, help="Cross module")
-    "--do_lower_case", action='store_true', help="Set this flag if you are using an uncased model.")
-    
     parser.add_argument('--n_gpu', type=int, default=1, help="Changed in the execute process.")
-    parser.add_argument("--local_rank", default=0, type=int, help="distribted training")
-    parser.add_argument("--task_type", default="retrieval", type=str, help="Point the task `retrieval` to finetune.")
-   aparser.addccumulation_steps_argument("--datatype", default="msrvtt", type=str, help="Point the dataset to finetune.")
+
+    parser.add_argument("--cross_model", default="cross-base", type=str, required=False, help="Cross module")
+    parser.add_argument("--cache_dir", default="", type=str,
+                        help="Where do you want to store the pre-trained models downloaded from s3")
+    parser.add_argument('--fp16', action='store_true',
+                        help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
+    parser.add_argument('--fp16_opt_level', type=str, default='O1',
+                        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'], See details at https://nvidia.github.io/apex/amp.html")
+
+    parser.add_argument("--task_type", default="inference", type=str, help="Point the task `inference`. ")
+    parser.add_argument("--datatype", default="msrvtt", type=str, help="Point the dataset to finetune.")
 
     parser.add_argument('--text_num_hidden_layers', type=int, default=12, help="Layer NO. of text.")
     parser.add_argument('--visual_num_hidden_layers', type=int, default=12, help="Layer NO. of visual.")
     parser.add_argument('--cross_num_hidden_layers', type=int, default=4, help="Layer NO. of cross.")
 
     parser.add_argument('--loose_type', action='store_true', help="Default using tight type for retrieval.")
+    parser.add_argument('--slice_framepos', type=int, default=0, choices=[0, 1, 2],
+                            help="0: cut from head frames; 1: cut from tail frames; 2: extract frames uniformly.")
     parser.add_argument('--eval_frame_order', type=int, default=0, choices=[0, 1, 2],
                         help="Frame order, 0: ordinary order; 1: reverse order; 2: random order.")
     parser.add_argument('--linear_patch', type=str, default="2d", choices=["2d", "3d"],
@@ -68,6 +76,13 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
                         help="choice a similarity header.")
+    
+    parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation relevant module to determine enhance or suppress some video frame representations. ")
+    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation', 'excitation_seq'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation, 'excitation_seq_aggregation' denote excitation + seqLSTM/seqTransf + aggregation, 'excitation_seq' denote excitation + seqLSTM/seqTransf + meanP. ")
+    parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
+    parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
+    parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
+    parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 3.0, 4.0, 6.0], help="Hyper-parameter used in se_block") 
 
     parser.add_argument("--pretrained_clip_name", default="ViT-B/32", type=str, help="Choose a CLIP version")
 
@@ -78,27 +93,23 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
 
     return args
 
-def init_device(args, local_rank):
-    global logger
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu", local_rank)
-
+def init_device(args):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     n_gpu = torch.cuda.device_count()
-    logger.info("device: {} n_gpu: {}".format(device, n_gpu))
-    args.n_gpu = n_gpu
+    print("device: {} n_gpu: {}".format(device, n_gpu))
 
-    if args.batch_size_val % args.n_gpu != 0:
-        raise ValueError("Invalid batch_size_val and n_gpu parameter: {}%{} and {}%{}, should be == 0".format(
-            args.batch_size, args.n_gpu, args.batch_size_val, args.n_gpu))
+    args.n_gpu = n_gpu
+    #if args.batch_size_val % args.n_gpu != 0:
+    #    raise ValueError("Invalid batch_size_val and n_gpu parameter: {}%{} and {}%{}, should be == 0".format(
+    #        args.batch_size, args.n_gpu, args.batch_size_val, args.n_gpu))
 
     return device, n_gpu
 
-def load_model(args, n_gpu, device):
-    model_file = os.path.join(args.output_dir, 'pytorch_model_best.bin')
+def load_model(args, device):
+    model_file = os.path.join(args.load_dir, 'pytorch_model_best.bin')
     if os.path.exists(model_file):
-        model_state_dict = torch.load(model_file, map_location='cpu')
-        if args.local_rank == 0:
-            logger.info("Model loaded from %s", model_file)
+        model_state_dict = torch.load(model_file)
+        print("Model loaded from %s", model_file)
         
         # Prepare model
         cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE), 'distributed')
@@ -126,7 +137,7 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         sim_matrix.append(each_row)
     return sim_matrix
 
-def eval_epoch(args, model, test_dataloader, device, n_gpu):
+def eval_model(model, test_dataloader, device, n_gpu):
     if hasattr(model, 'module'):
         model = model.module.to(device)
     else:
@@ -150,8 +161,8 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
         cut_off_points_ = [itm - 1 for itm in cut_off_points_]
 
     if multi_sentence_:
-        logger.warning("Eval under the multi-sentence per video clip setting.")
-        logger.warning("sentence num: {}, video num: {}".format(sentence_num_, video_num_))
+        print("Eval under the multi-sentence per video clip setting.")
+        print("sentence num: {}, video num: {}".format(sentence_num_, video_num_))
 
     model.eval()
     # avoid out or memory in inference
@@ -193,7 +204,7 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
                 batch_visual_output_list.append(visual_output)
                 batch_list_v.append((video_mask,))
 
-            print("{}/{}\r".format(bid, len(test_dataloader)), end="")
+            #print("{}/{}\r".format(bid, len(test_dataloader)), end="")
 
         # ----------------------------------
         # 2. calculate the similarity
@@ -238,7 +249,7 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
             sim_matrix = np.concatenate(tuple(sim_matrix), axis=0)
 
     if multi_sentence_:
-        logger.info("before reshape, sim matrix size: {} x {}".format(sim_matrix.shape[0], sim_matrix.shape[1]))
+        print("before reshape, sim matrix size: {} x {}".format(sim_matrix.shape[0], sim_matrix.shape[1]))
         cut_off_points2len_ = [itm + 1 for itm in cut_off_points_]
         max_length = max([e_-s_ for s_, e_ in zip([0]+cut_off_points2len_[:-1], cut_off_points2len_)])
         sim_matrix_new = []
@@ -246,33 +257,32 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
             sim_matrix_new.append(np.concatenate((sim_matrix[s_:e_],
                                                   np.full((max_length-e_+s_, sim_matrix.shape[1]), -np.inf)), axis=0))
         sim_matrix = np.stack(tuple(sim_matrix_new), axis=0)
-        logger.info("after reshape, sim matrix size: {} x {} x {}".
+        print("after reshape, sim matrix size: {} x {} x {}".
                     format(sim_matrix.shape[0], sim_matrix.shape[1], sim_matrix.shape[2]))
 
         tv_metrics = tensor_text_to_video_metrics(sim_matrix)
         vt_metrics = compute_metrics(tensor_video_to_text_sim(sim_matrix))
     else:
-        logger.info("sim matrix size: {}, {}".format(sim_matrix.shape[0], sim_matrix.shape[1]))
+        print("sim matrix size: {}, {}".format(sim_matrix.shape[0], sim_matrix.shape[1]))
         tv_metrics = compute_metrics(sim_matrix)
         vt_metrics = compute_metrics(sim_matrix.T)
-        logger.info('\t Length-T: {}, Length-V:{}'.format(len(sim_matrix), len(sim_matrix[0])))
+        print('\t Length-T: {}, Length-V:{}'.format(len(sim_matrix), len(sim_matrix[0])))
     
-    logger.info("Text-to-Video:")
-    logger.info('\t>>>  R@1: {:.1f} - R@5: {:.1f} - R@10: {:.1f} - Median R: {:.1f} - Mean R: {:.1f}'.
+    print("Text-to-Video:")
+    print('\t>>>  R@1: {:.1f} - R@5: {:.1f} - R@10: {:.1f} - Median R: {:.1f} - Mean R: {:.1f}'.
                 format(tv_metrics['R1'], tv_metrics['R5'], tv_metrics['R10'], tv_metrics['MR'], tv_metrics['MeanR']))
-    logger.info("Video-to-Text:")
-    logger.info('\t>>>  V2T$R@1: {:.1f} - V2T$R@5: {:.1f} - V2T$R@10: {:.1f} - V2T$Median R: {:.1f} - V2T$Mean R: {:.1f}'.
+    print("Video-to-Text:")
+    print('\t>>>  V2T$R@1: {:.1f} - V2T$R@5: {:.1f} - V2T$R@10: {:.1f} - V2T$Median R: {:.1f} - V2T$Mean R: {:.1f}'.
                 format(vt_metrics['R1'], vt_metrics['R5'], vt_metrics['R10'], vt_metrics['MR'], vt_metrics['MeanR']))
 
 def main():
-    global logger
     args = get_args()
-    device, n_gpu = init_device(args, args.local_rank)
+    device, n_gpu = init_device(args)
 
     tokenizer = ClipTokenizer()
 
-    assert args.task_type == "retrieval"
-    model = load_model(args, n_gpu, device)
+    assert args.task_type == "inference"
+    model = load_model(args, device)
 
     ## ####################################
     # dataloader loading
@@ -295,19 +305,17 @@ def main():
     if test_dataloader is None:
         test_dataloader, test_length = val_dataloader, val_length
 
-    if args.local_rank == 0:
-        logger.info("***** Running test *****")
-        logger.info("  Num examples = %d", test_length)
-        logger.info("  Batch size = %d", args.batch_size_val)
-        logger.info("  Num steps = %d", len(test_dataloader))
-        logger.info("***** Running val *****")
-        logger.info("  Num examples = %d", val_length)
+    print("***** Running test *****")
+    print("  Num examples = %d", test_length)
+    print("  Batch size = %d", args.batch_size_val)
+    print("  Num steps = %d", len(test_dataloader))
+    print("***** Running val *****")
+    print("  Num examples = %d", val_length)
 
     ## ####################################
-    # train and eval
+    # eval
     ## ####################################
-    if args.local_rank == 0:
-        eval_epoch(args, model, test_dataloader, device, n_gpu)
+    eval_model(model, test_dataloader, device, n_gpu)
 
 ######################################### main function #####################################
 if __name__ == "__main__":

@@ -23,8 +23,8 @@ from modules.optimization import BertAdam
 from util import parallel_apply, get_logger
 from dataloaders.data_dataloaders import DATALOADER_DICT
 
-#torch.distributed.init_process_group(backend="nccl",  timeout=datetime.timedelta(seconds=5400))
-torch.distributed.init_process_group(backend="nccl")
+torch.distributed.init_process_group(backend="nccl", init_method='env://', timeout=datetime.timedelta(seconds=5400))
+#torch.distributed.init_process_group(backend="nccl")
 
 global logger
 
@@ -114,7 +114,7 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
     parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
-    parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 4.0, 6.0], help="Hyper-parameter used in se_block")
+    parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 3.0, 4.0, 6.0, 12.0], help="Hyper-parameter used in se_block")
     
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
