@@ -82,7 +82,7 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
     parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
     parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
-    parser.add_argument('--reduction_ratio', type=float,  default=4.0, choices=[1/6, 0.25, 0.5, 2.0, 3.0, 4.0, 6.0], help="Hyper-parameter used in se_block") 
+    parser.add_argument('--reduction_ratio', type=float,  default=1/6, choices=[1/6, 1/4, 1/3, 1/2, 2.0, 3.0, 4.0, 6.0], help="Hyper-parameter used in se_block") 
 
     parser.add_argument("--pretrained_clip_name", default="ViT-B/32", type=str, help="Choose a CLIP version")
 

@@ -458,6 +458,8 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_output = torch.cat((visual_output, visual_output_original[:, visual_output.size(1):, ...].contiguous()), dim=1)
             visual_output = visual_output + visual_output_original
 
+            #print('lstm weight:', visual_output / visual_output_original)
+
             # aggregation implementation
             if self.se_flag:
                 if self.se_type=='excitation_seq_aggregation':

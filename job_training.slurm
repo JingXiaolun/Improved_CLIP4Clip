@@ -13,8 +13,8 @@
 #SBATCH --mail-user=jingxiaolun@sjtu.edu.cn
 
 cd $SLURM_SUBMIT_DIR
-#sh main_msrvtt.sh
-sh main_msvd.sh
+sh main_msrvtt.sh
+#sh main_msvd.sh
 
 
 

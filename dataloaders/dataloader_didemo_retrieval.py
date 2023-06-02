@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import os
+import torch
 from torch.utils.data import Dataset
 import numpy as np
 import json
@@ -59,6 +60,7 @@ class DiDeMo_DataLoader(Dataset):
             description = itm["description"]
             times = itm["times"]
             video = itm["video"]
+
             if video not in video_ids:
                 continue
 
@@ -163,6 +165,12 @@ class DiDeMo_DataLoader(Dataset):
                           self.rawVideoExtractor.size, self.rawVideoExtractor.size), dtype=np.float)
         video_path = self.video_dict[idx]
 
+        if video_path.endswith('.'):
+            video_path_npz = video_path.replace('split_video', 'video_frame_input') + 'npz'
+        else:
+            video_path_suffix = video_path.split('.')[-1]
+            video_path_npz = video_path.replace('split_video', 'video_frame_input').replace(video_path_suffix, 'npz')
+
         try:
             for i in range(len(s)):
                 start_time = int(s[i])
@@ -176,8 +184,11 @@ class DiDeMo_DataLoader(Dataset):
 
                 cache_id = "{}_{}_{}".format(video_path, start_time, end_time)
                 # Should be optimized by gathering all asking of this video
-                raw_video_data = self.rawVideoExtractor.get_video_data(video_path, start_time, end_time)
-                raw_video_data = raw_video_data['video']
+                
+                #raw_video_data = self.rawVideoExtractor.get_video_data(video_path, start_time, end_time)
+                #raw_video_data = raw_video_data['video']
+
+                raw_video_data = torch.from_numpy(np.load(video_path_npz, allow_pickle=True)['arr_0'])
 
                 if len(raw_video_data.shape) > 3:
                     raw_video_data_clip = raw_video_data

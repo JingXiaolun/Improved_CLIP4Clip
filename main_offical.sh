@@ -161,7 +161,76 @@
 
 ############################################ ActivityNet ################################
 
+############################################ DiDeMo ########################################
+### LooseType-MeanP
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29501' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Offical/didemo_retrieval_looseType_meanP \
+#--log_dir ../Log/Offical/didemo_retrieval_looseType_meanP \
+#--visualize_dir ../Visualize/Log/Offical/didemo_retrieval_looseType_meanP \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header meanP \
+#--pretrained_clip_name ViT-B/32
 
+### LooseType-seqLSTM
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29502' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Offical/didemo_retrieval_looseType_seqLSTM \
+#--log_dir ../Log/Offical/didemo_retrieval_looseType_seqLSTM \
+#--visualize_dir ../Visualize/Log/Offical/didemo_retrieval_looseType_seqLSTM \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header seqLSTM \
+#--pretrained_clip_name ViT-B/32
 
+### LooseType-seqTransf
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29503' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Offical/didemo_retrieval_looseType_seqTransf \
+#--log_dir ../Log/Offical/didemo_retrieval_looseType_seqTransf \
+#--visualize_dir ../Visualize/Log/Offical/didemo_retrieval_looseType_seqTransf \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header seqTransf \
+#--pretrained_clip_name ViT-B/32
 
+### TightType
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29504' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Offical/didemo_retrieval_tightTransf \
+#--log_dir ../Log/Offical/didemo_retrieval_tightTransf \
+#--visualize_dir ../Visualize/Log/Offical/didemo_retrieval_tightTransf \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--linear_patch 2d --sim_header tightTransf \
+#--pretrained_clip_name ViT-B/32
 
