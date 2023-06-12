@@ -11,6 +11,8 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import random
 import os
+#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
 from metrics import compute_metrics, tensor_text_to_video_metrics, tensor_video_to_text_sim
 import time
 import datetime

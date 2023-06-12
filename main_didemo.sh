@@ -2,10 +2,10 @@
 ###################################################################### LooseType-MeanP ##################################################################################
 ## use squeeze excitation (1)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29501' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Improved/didemo_retrieval_looseType_meanP \
@@ -21,10 +21,10 @@
 
 ## use expand excitation (2)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29502' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Improved/didemo_retrieval_looseType_meanP \
@@ -40,10 +40,10 @@
 
 ## use squeeze aggregation (3)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29503' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -59,10 +59,10 @@
 
 ## use expand aggregation (4)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29504' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -78,10 +78,10 @@
 
 ## use squeeze excitation and aggregation (5)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29505' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -97,10 +97,10 @@
 
 ## use expand excitation and aggregation (6)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
-#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29506' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29505' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -116,10 +116,10 @@
 
 ## use squeeze excitation and expand aggregation (7)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29507' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Expand_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -135,10 +135,10 @@
 
 ## use expand excitation and squeeze aggregation (8)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29508' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Squeeze_Aggregation_Improved/didemo_retrieval_looseType_meanP \
@@ -155,10 +155,10 @@
 ###################################################################### LooseType-seqLSTM ##################################################################################
 ## use squeeze excitation (1)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29501' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -174,10 +174,10 @@
 
 ## use expand excitation (2)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29502' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -193,10 +193,10 @@
 
 ## use squeeze aggregation (3)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29503' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -212,10 +212,10 @@
 
 ## use expand aggregation (4)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29504' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -231,10 +231,10 @@
 
 ## use squeeze excitation and aggregation (5)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
-#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29505' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --master_port='29504' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -250,10 +250,10 @@
 
 ## use expand excitation and aggregation (6)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29506' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -269,10 +269,10 @@
 
 ## use squeeze excitation and expand aggregation (7)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29507' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Expand_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -288,10 +288,10 @@
 
 ## use expand excitation and squeeze aggregation (8)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29508' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqLSTM \
@@ -308,10 +308,10 @@
 ###################################################################### LooseType-seqTransf ##################################################################################
 ## use squeeze excitation (1)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29501' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -327,10 +327,10 @@
 
 ## use expand excitation (2)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29502' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -344,12 +344,50 @@
 #--se_block --se_type excitation --reduction_ratio 0.25 \
 #--pretrained_clip_name ViT-B/32
 
-## use squeeze aggregation (3)
+## use squeeze aggregation (3) --single node
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29503' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--log_dir ../Log/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--visualize_dir ../Visualize/Log/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header seqTransf \
+#--se_block --se_type aggregation --reduction_ratio 4 \
+#--pretrained_clip_name ViT-B/32
+
+## use squeeze aggregation (3) --multi nodes
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr="node3" --master_port='29501' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
+#--data_path ${FILE_DATA_PATH} \
+#--features_path ${VIDEO_DATA_PATH} \
+#--output_dir ../Model/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--log_dir ../Log/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--visualize_dir ../Visualize/Log/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
+#--lr 1e-4 --max_words 64 --max_frames 64 --batch_size_val 16 \
+#--datatype didemo \
+#--feature_framerate 1 --coef_lr 1e-3 \
+#--freeze_layer_num 0  --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header seqTransf \
+#--se_block --se_type aggregation --reduction_ratio 4 \
+#--pretrained_clip_name ViT-B/32
+#
+## use squeeze aggregation (3) --multi nodes
+#FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
+#python -m torch.distributed.launch --nproc_per_node=8 --nnodes=2 --node_rank=0 --master_addr="node3" --master_port='29501' \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -365,10 +403,10 @@
 
 ## use expand aggregation (4)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29504' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -384,10 +422,10 @@
 
 ## use squeeze excitation and aggregation (5)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29505' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -403,10 +441,10 @@
 
 ## use expand excitation and aggregation (6)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29506' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -422,10 +460,10 @@
 
 ## use squeeze excitation and expand aggregation (7)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29507' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Expand_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -441,10 +479,10 @@
 
 ## use expand excitation and squeeze aggregation (8)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29508' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Squeeze_Aggregation_Improved/didemo_retrieval_looseType_seqTransf \
@@ -461,10 +499,10 @@
 ###################################################################### TightType-tightTransf ##################################################################################
 ## squeeze excitation (1)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29501' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Squeeze_Excitation_Improved/didemo_retrieval_tightTransf  \
@@ -480,10 +518,10 @@
 
 ### expand excitation (2)
 #FILE_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_file'
-#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/video_frame_input'
+#VIDEO_DATA_PATH='../DataSet/DiDeMo/data/compressed/split_video'
 #python -m torch.distributed.launch --nproc_per_node=8 --master_port='29502' \
-#main_task_retrieval.py --do_train --num_thread_reader=2 \
-#--epochs=5 --batch_size=128 --n_display=50 \
+#main_task_retrieval.py --do_train --num_thread_reader=0 \
+#--epochs=5 --batch_size=64 --n_display=50 \
 #--data_path ${FILE_DATA_PATH} \
 #--features_path ${VIDEO_DATA_PATH} \
 #--output_dir ../Model/Expand_Excitation_Improved/didemo_retrieval_tightTransf  \
