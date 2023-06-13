@@ -93,11 +93,56 @@ class QuickGELU(nn.Module):
     def forward(self, x: torch.Tensor):
         return x * torch.sigmoid(1.702 * x)
 
-class ResidualAttentionBlock(nn.Module):
-    def __init__(self, d_model: int, n_head: int):
+class Attention(nn.Module):
+    def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0., proj_drop=0., keep_rate=1.):
         super().__init__()
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = head_dim ** -0.5
 
-        self.attn = nn.MultiheadAttention(d_model, n_head)
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+        self.keep_rate = keep_rate
+        assert 0 < keep_rate <= 1, "keep_rate must > 0 and <= 1, got {0}".format(keep_rate)
+
+    def forward(self, x, keep_rate=None, tokens=None):
+        if keep_rate is None:
+            keep_rate = self.keep_rate
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
+
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+
+        left_tokens = N - 1
+        if self.keep_rate < 1 and keep_rate < 1 or tokens is not None:  # double check the keep rate
+            left_tokens = math.ceil(keep_rate * (N - 1))
+            if tokens is not None:
+                left_tokens = tokens
+            if left_tokens == N - 1:
+                return x, None, None, None, left_tokens
+            assert left_tokens >= 1
+            cls_attn = attn[:, :, 0, 1:]  # [B, H, N-1]
+            cls_attn = cls_attn.mean(dim=1)  # [B, N-1]
+            _, idx = torch.topk(cls_attn, left_tokens, dim=1, largest=True, sorted=True)  # [B, left_tokens]
+            index = idx.unsqueeze(-1).expand(-1, -1, C)  # [B, left_tokens, C]
+
+            return x, index, idx, cls_attn, left_tokens
+
+        return  x, None, None, None, left_tokens
+
+class ResidualAttentionBlock(nn.Module):
+    def __init__(self, d_model: int, n_head: int, keep_ratio: float, fuse_token: bool):
+        super().__init__()
+        self.attn = Attention(d_model, n_head)
         self.ln_1 = LayerNorm(d_model)
         self.mlp = nn.Sequential(OrderedDict([
             ("c_fc", nn.Linear(d_model, d_model * 4)),
@@ -106,16 +151,41 @@ class ResidualAttentionBlock(nn.Module):
         ]))
         self.ln_2 = LayerNorm(d_model)
         self.n_head = n_head
-
+        self.keep_ratio = keep_ratio
+        self.fuse_token = fuse_token
+    
     def attention(self, x: torch.Tensor, attn_mask: torch.Tensor):
         attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
-        return self.attn(x, x, x, need_weights=False, attn_mask=attn_mask_)[0]
+        tmp, index, idx, cls_attn, left_tokens = self.attn(x, self.keep_ratio)
+        #x = x + tmp
+
+        if index is not None:
+            # B, N, C = x.shape
+            non_cls = x[:, 1:]
+            x_others = torch.gather(non_cls, dim=1, index=index)  # [B, left_tokens, C]
+
+            if self.fuse_token:
+                compl = complement_idx(idx, N - 1)  # [B, N-1-left_tokens]
+                non_topk = torch.gather(non_cls, dim=1, index=compl.unsqueeze(-1).expand(-1, -1, C))  # [B, N-1-left_tokens, C]
+
+                non_topk_attn = torch.gather(cls_attn, dim=1, index=compl)  # [B, N-1-left_tokens]
+                extra_token = torch.sum(non_topk * non_topk_attn.unsqueeze(-1), dim=1, keepdim=True)  # [B, 1, C]
+                x = torch.cat([x[:, 0:1], x_others, extra_token], dim=1)
+            else:
+                x = torch.cat([x[:, 0:1], x_others], dim=1)
+
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        n_tokens = x.shape[1] - 1
+        if get_idx and index is not None:
+            return x, n_tokens, idx
+        return x, n_tokens, None 
 
     def forward(self, para_tuple: tuple):
         # x: torch.Tensor, attn_mask: torch.Tensor
         # print(para_tuple)
         x, attn_mask = para_tuple
-        x = x + self.attention(self.ln_1(x), attn_mask)
+        x = x + self.attn(self.ln_1(x), attn_mask)
+
         x = x + self.mlp(self.ln_2(x))
         return (x, attn_mask)
 
