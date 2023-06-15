@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import os
+import torch
 from torch.utils.data import Dataset
 import numpy as np
 import json
@@ -163,10 +164,10 @@ class LSMDC_DataLoader(Dataset):
 
         try:
             for i, video_id in enumerate(choice_video_ids):
+                #raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
+                #raw_video_data = raw_video_data['video']
                 video_path = self.video_dict[video_id]
-
-                raw_video_data = self.rawVideoExtractor.get_video_data(video_path)
-                raw_video_data = raw_video_data['video']
+                raw_video_data = torch.from_numpy(np.load(video_path, allow_pickle=True)['arr_0'])
 
                 if len(raw_video_data.shape) > 3:
                     raw_video_data_clip = raw_video_data
