@@ -59,7 +59,8 @@ class LSMDC_DataLoader(Dataset):
                 assert len(line_split) == 6
                 clip_id, start_aligned, end_aligned, start_extracted, end_extracted, sentence = line_split
                 caption_dict[len(caption_dict)] = (clip_id, sentence)
-                if clip_id not in video_id_list: video_id_list.append(clip_id)
+                if clip_id not in video_id_list: 
+                    video_id_list.append(clip_id)
 
         video_dict = {}
         for root, dub_dir, video_files in os.walk(self.features_path):
