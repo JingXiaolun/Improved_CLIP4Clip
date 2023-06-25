@@ -19,6 +19,8 @@ from .until_config import PretrainedConfig
 from .until_module import PreTrainedModel, LayerNorm, ACT2FN
 from collections import OrderedDict
 
+from helpers import complement_idx
+
 logger = logging.getLogger(__name__)
 
 PRETRAINED_MODEL_ARCHIVE_MAP = {}
@@ -140,7 +142,7 @@ class Attention(nn.Module):
         return  x, None, None, None, left_tokens
 
 class ResidualAttentionBlock(nn.Module):
-    def __init__(self, d_model: int, n_head: int, keep_ratio: float, fuse_token: bool):
+    def __init__(self, d_model: int, n_head: int, keep_rate: float, fuse_token: bool):
         super().__init__()
         self.attn = Attention(d_model, n_head)
         self.ln_1 = LayerNorm(d_model)
@@ -151,13 +153,12 @@ class ResidualAttentionBlock(nn.Module):
         ]))
         self.ln_2 = LayerNorm(d_model)
         self.n_head = n_head
-        self.keep_ratio = keep_ratio
+        self.keep_rate = keep_rate
         self.fuse_token = fuse_token
     
-    def attention(self, x: torch.Tensor, attn_mask: torch.Tensor):
+    def attention(self, x: torch.Tensor, attn_mask: torch.Tensor, get_idx: False):
         attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
-        tmp, index, idx, cls_attn, left_tokens = self.attn(x, self.keep_ratio)
-        #x = x + tmp
+        tmp, index, idx, cls_attn, left_tokens = self.attn(x, self.keep_rate)
 
         if index is not None:
             # B, N, C = x.shape
@@ -180,11 +181,10 @@ class ResidualAttentionBlock(nn.Module):
             return x, n_tokens, idx
         return x, n_tokens, None 
 
-    def forward(self, para_tuple: tuple):
+    def forward(self, para_tuple: tuple, get_idx: False):
         # x: torch.Tensor, attn_mask: torch.Tensor
-        # print(para_tuple)
         x, attn_mask = para_tuple
-        x = x + self.attn(self.ln_1(x), attn_mask)
+        x = x + self.attn(self.ln_1(x), attn_mask, get_idx)
 
         x = x + self.mlp(self.ln_2(x))
         return (x, attn_mask)
