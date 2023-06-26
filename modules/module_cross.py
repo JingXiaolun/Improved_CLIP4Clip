@@ -156,10 +156,25 @@ class ResidualAttentionBlock(nn.Module):
         self.keep_rate = keep_rate
         self.fuse_token = fuse_token
     
-    def attention(self, x: torch.Tensor, attn_mask: torch.Tensor, get_idx: False):
-        attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
-        tmp, index, idx, cls_attn, left_tokens = self.attn(x, self.keep_rate)
+    #def attention(self, x: torch.Tensor, attn_mask: torch.Tensor, get_idx: False):
+    #    attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
 
+    def forward(self, para_tuple: tuple):
+        # x: torch.Tensor, attn_mask: torch.Tensor
+        x, attn_mask = para_tuple
+
+        # step1: get output from self.attn and implement residual operation 
+        '''
+        tmp: shape of [B, N, C]
+        index: shape of [B, left_tokens, C]
+        idx: shape of [B, left_tokens]
+        cls_attn: shape of [B, N-1]
+        left_tokens: shape of [1] 
+        '''
+        tmp, index, idx, cls_attn, left_tokens = self.attn(self.ln_1(x), self.keep_rate)
+        x = x + tmp
+
+        # step2: tokens fusion or removal 
         if index is not None:
             # B, N, C = x.shape
             non_cls = x[:, 1:]
@@ -175,18 +190,10 @@ class ResidualAttentionBlock(nn.Module):
             else:
                 x = torch.cat([x[:, 0:1], x_others], dim=1)
 
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
-        n_tokens = x.shape[1] - 1
-        if get_idx and index is not None:
-            return x, n_tokens, idx
-        return x, n_tokens, None 
-
-    def forward(self, para_tuple: tuple, get_idx: False):
-        # x: torch.Tensor, attn_mask: torch.Tensor
-        x, attn_mask = para_tuple
-        x = x + self.attn(self.ln_1(x), attn_mask, get_idx)
-
+        # step3: LayerNorm + MLP (Residual Operation)
         x = x + self.mlp(self.ln_2(x))
+        n_tokens = x.shape[1] - 1
+
         return (x, attn_mask)
 
 class Transformer(nn.Module):
