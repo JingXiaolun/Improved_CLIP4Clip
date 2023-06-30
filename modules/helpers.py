@@ -2,6 +2,8 @@
 # date: 2023.06.21
 # description: function of complement_iddx
 
+import torch
+
 def complement_idx(idx, dim):
     """
     Compute the complement: set(range(dim)) - set(idx).

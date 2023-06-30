@@ -19,7 +19,7 @@ from .until_config import PretrainedConfig
 from .until_module import PreTrainedModel, LayerNorm, ACT2FN
 from collections import OrderedDict
 
-from helpers import complement_idx
+from .helpers import complement_idx
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class Attention(nn.Module):
         self.keep_rate = keep_rate
         assert 0 < keep_rate <= 1, "keep_rate must > 0 and <= 1, got {0}".format(keep_rate)
 
-    def forward(self, x, keep_rate=None, tokens=None):
+    def forward(self, x, keep_rate=None, attn_mask=None):
         if keep_rate is None:
             keep_rate = self.keep_rate
         B, N, C = x.shape
@@ -117,6 +117,12 @@ class Attention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
+        
+        # attn shape: [32, 8, 13, 13] | attn_mask_ shape: [256, 12, 12] (dimension mismatch)
+        #if attn_mask is not None:
+        #    attn_mask_ = attn_mask.repeat_interleave(self.num_heads, dim=0)
+        #    #print(attn.shape, attn_mask_.shape)
+        #    attn = attn.masked_fill(attn_mask_ == 0, -1e9)
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
@@ -125,10 +131,8 @@ class Attention(nn.Module):
         x = self.proj_drop(x)
 
         left_tokens = N - 1
-        if self.keep_rate < 1 and keep_rate < 1 or tokens is not None:  # double check the keep rate
+        if self.keep_rate < 1 and keep_rate < 1:  # double check the keep rate
             left_tokens = math.ceil(keep_rate * (N - 1))
-            if tokens is not None:
-                left_tokens = tokens
             if left_tokens == N - 1:
                 return x, None, None, None, left_tokens
             assert left_tokens >= 1
@@ -136,15 +140,13 @@ class Attention(nn.Module):
             cls_attn = cls_attn.mean(dim=1)  # [B, N-1]
             _, idx = torch.topk(cls_attn, left_tokens, dim=1, largest=True, sorted=True)  # [B, left_tokens]
             index = idx.unsqueeze(-1).expand(-1, -1, C)  # [B, left_tokens, C]
-
             return x, index, idx, cls_attn, left_tokens
-
         return  x, None, None, None, left_tokens
 
 class ResidualAttentionBlock(nn.Module):
     def __init__(self, d_model: int, n_head: int, keep_rate: float, fuse_token: bool):
         super().__init__()
-        self.attn = Attention(d_model, n_head)
+        self.attn = Attention(dim=d_model, num_heads=n_head, keep_rate=keep_rate)
         self.ln_1 = LayerNorm(d_model)
         self.mlp = nn.Sequential(OrderedDict([
             ("c_fc", nn.Linear(d_model, d_model * 4)),
@@ -171,12 +173,12 @@ class ResidualAttentionBlock(nn.Module):
         cls_attn: shape of [B, N-1]
         left_tokens: shape of [1] 
         '''
-        tmp, index, idx, cls_attn, left_tokens = self.attn(self.ln_1(x), self.keep_rate)
+        tmp, index, idx, cls_attn, left_tokens = self.attn(self.ln_1(x), self.keep_rate, attn_mask)
         x = x + tmp
 
         # step2: tokens fusion or removal 
         if index is not None:
-            # B, N, C = x.shape
+            B, N, C = x.shape
             non_cls = x[:, 1:]
             x_others = torch.gather(non_cls, dim=1, index=index)  # [B, left_tokens, C]
 
@@ -197,11 +199,11 @@ class ResidualAttentionBlock(nn.Module):
         return (x, attn_mask)
 
 class Transformer(nn.Module):
-    def __init__(self, width: int, layers: int, heads: int):
+    def __init__(self, width: int, layers: int, heads: int, keep_rate: float, fuse_token: bool):
         super().__init__()
         self.width = width
         self.layers = layers
-        self.resblocks = nn.Sequential(*[ResidualAttentionBlock(width, heads) for _ in range(layers)])
+        self.resblocks = nn.Sequential(*[ResidualAttentionBlock(width, heads, keep_rate, fuse_token) for _ in range(layers)])
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor):
         return self.resblocks((x, attn_mask))[0]
