@@ -469,7 +469,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             if self.se_flag:
                 if self.se_type in ['excitation_seq_aggregation', 'excitation_seq']:
                     visual_output = self.se_block_excitation(visual_output)
-            
+           
+            #print('sequence shape:', sequence_output.shape)
+            #print('visual shape:', visual_output.shape)
+
             # Sequential type: Transformer Encoder
             visual_output_original = visual_output
             seq_length = visual_output.size(1)

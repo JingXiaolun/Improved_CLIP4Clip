@@ -6,8 +6,8 @@
 #SBTACH --ntasks-per-node=8
 #SBATCH --gres=gpu:4
 #SBATCH -w node3
-#SBATCH --output=../Log/slurm_output/%j.out
-#SBATCH --error=../Log/slurm_output/%j.err
+#SBATCH --output=../Log/Excitation_Aggregation/slurm_output/%j.out
+#SBATCH --error=../Log/Excitation_Aggregation/slurm_output/%j.err
 #SBATCH -t 6:00:00                            
 #SBATCH --mail-type=end
 #SBATCH --mail-user=jingxiaolun@sjtu.edu.cn
