@@ -1475,20 +1475,20 @@
 #--pretrained_clip_name ViT-B/32
 
 ###################################################################### LooseType-seqTransf ##################################################################################
-# use squeeze excitation (1)
-FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
-VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
-python main_task_inference.py --do_eval --num_thread_reader=0  \
---val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
---data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
---features_path ${VIDEO_DATA_PATH}/video_frame_input \
---load_dir ../Model/Excitation_Aggregation/Squeeze_Excitation_Improved/msrvtt_retrieval_looseType_seqTransf \
---max_words 32 --max_frames 12 --batch_size_val 16 \
---datatype msrvtt \
---feature_framerate 1 --slice_framepos 2 \
---loose_type --linear_patch 2d --sim_header seqTransf \
---se_block --se_type excitation --reduction_ratio 4 \
---pretrained_clip_name ViT-B/32
+## use squeeze excitation (1)
+#FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
+#VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
+#python main_task_inference.py --do_eval --num_thread_reader=0  \
+#--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
+#--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
+#--features_path ${VIDEO_DATA_PATH}/video_frame_input \
+#--load_dir ../Model/Excitation_Aggregation/Squeeze_Excitation_Improved/msrvtt_retrieval_looseType_seqTransf \
+#--max_words 32 --max_frames 12 --batch_size_val 16 \
+#--datatype msrvtt \
+#--feature_framerate 1 --slice_framepos 2 \
+#--loose_type --linear_patch 2d --sim_header seqTransf \
+#--se_block --se_type excitation --reduction_ratio 4 \
+#--pretrained_clip_name ViT-B/32
 
 ## use expand excitation (2)
 #FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
@@ -1671,20 +1671,20 @@ python main_task_inference.py --do_eval --num_thread_reader=0  \
 #--pretrained_clip_name ViT-B/32
 
 ###################################################################### TightType-tightTransf ##################################################################################
-## squeeze excitation (1)
-#FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
-#VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
-#python main_task_inference.py --do_eval --num_thread_reader=0  \
-#--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
-#--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
-#--features_path ${VIDEO_DATA_PATH}/video_frame_input \
-#--load_dir ../Model/Excitation_Aggregation/Squeeze_Excitation_Improved/msrvtt_retrieval_tightTransf \
-#--max_words 32 --max_frames 12 --batch_size_val 16 \
-#--datatype msrvtt \
-#--feature_framerate 1 --slice_framepos 2 \
-#--linear_patch 2d --sim_header tightTransf \
-#--se_block --reduction_ratio 4 
-#--pretrained_clip_name ViT-B/32
+# squeeze excitation (1)
+FILE_DATA_PATH='../DataSet/MSRVTT/data/file'
+VIDEO_DATA_PATH='../DataSet/MSRVTT/data/compressed'
+python main_task_inference.py --do_eval --num_thread_reader=0  \
+--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
+--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
+--features_path ${VIDEO_DATA_PATH}/video_frame_input \
+--load_dir ../Model/Excitation_Aggregation/Squeeze_Excitation_Improved/msrvtt_retrieval_tightTransf \
+--max_words 32 --max_frames 12 --batch_size_val 16 \
+--datatype msrvtt \
+--feature_framerate 1 --slice_framepos 2 \
+--linear_patch 2d --sim_header tightTransf \
+--se_block --reduction_ratio 4 
+--pretrained_clip_name ViT-B/32
 
 ### expand excitation (2)
 #FILE_DATA_PATH='../DataSet/MSRVTT/data/file'

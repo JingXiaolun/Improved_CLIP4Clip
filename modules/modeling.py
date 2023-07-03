@@ -404,6 +404,8 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
                 visual_output = self.se_block(visual_output)
 
         concat_features = torch.cat((sequence_output, visual_output), dim=1)  # concatnate tokens and frames
+        print(f'sequence_output: {sequence_output.shape}, visual_output: {visual_output.shape}, concat_features: {concat_features.shape}')
+
         concat_mask = torch.cat((attention_mask, video_mask), dim=1)
         text_type_ = torch.zeros_like(attention_mask)
         video_type_ = torch.ones_like(video_mask)
