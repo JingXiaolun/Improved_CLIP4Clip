@@ -346,6 +346,8 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
     def _get_cross_output(self, sequence_output, visual_output, attention_mask, video_mask):
 
         concat_features = torch.cat((sequence_output, visual_output), dim=1)  # concatnate tokens and frames
+        print(f'sequence_output: {sequence_output.shape}, visual_output: {visual_output.shape}, concat_features: {concat_features.shape}')    
+
         concat_mask = torch.cat((attention_mask, video_mask), dim=1)
         text_type_ = torch.zeros_like(attention_mask)
         video_type_ = torch.ones_like(video_mask)
@@ -397,16 +399,23 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
 
         elif sim_header == "seqTransf":
             # Sequential type: Transformer Encoder
-            seq_batch, seq_length, seq_dim = visual_output.size()
+            visual_seq_batch, visual_seq_length, visual_seq_dim = visual_output.size()  # [b_v, l_v, d_v]
+            textual_seq_batch, textual_seq_length, textual_seq_dim = sequence_output.size()  # [b_t, 1, d_t]
 
-            cls_token = self.cls_token_generator(sequence_output)
+            cls_token = self.cls_token_generator(sequence_output)  # [b_t, 1, d_t] 
+
+            #cls_token = cls_token.unsqueeze(1).repeat(1, visual_seq_batch, 1, 1)  # [b_t, b_v, 1, d_t]
+            #cls_token = cls_token.view(-1, textual_seq_length, textual_seq_dim)   # [b_t * b_v, 1, d_t]
             cls_token = cls_token.to(device=visual_output.device)
+           
+            #visual_output = visual_output.unsqueeze(0).repeat(textual_seq_batch, 1, 1, 1)  # [b_t, b_v, l_v, d_v]
+            #visual_output = visual_output.view(-1, visual_seq_length, visual_seq_dim)  # [b_t * b_v, l_v, d_v]
 
-            assert cls_token.shape[0]==visual_output.shape[0]
+            assert cls_token.shape[0]==visual_output.shape[0], f"The shape of cls_token is {cls_token.shape}, while the shape of visual_output is {visual_output.shape}."
             visual_output = torch.cat([cls_token, visual_output], dim=1)  # N x (L+1) x D
 
-            position_ids = torch.arange(seq_length + 1, dtype=torch.long, device=visual_output.device)
-            position_ids = position_ids.unsqueeze(0).expand(seq_batch, -1)
+            position_ids = torch.arange(visual_seq_length + 1, dtype=torch.long, device=visual_output.device)
+            position_ids = position_ids.unsqueeze(0).expand(visual_seq_batch, -1)
             frame_position_embeddings = self.frame_position_embeddings(position_ids)
             visual_output = visual_output + frame_position_embeddings
 

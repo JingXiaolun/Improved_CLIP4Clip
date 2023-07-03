@@ -74,9 +74,9 @@ main_task_retrieval.py --do_train --num_thread_reader=0 \
 #--val_csv ${FILE_DATA_PATH}/MSRVTT_JSFUSION_test.csv \
 #--data_path ${FILE_DATA_PATH}/MSRVTT_data.json \
 #--features_path ${VIDEO_DATA_PATH}/video_frame_input \
-#--output_dir ../Model/Offical/msrvtt_retrieval_tightTransf \
-#--log_dir ../Log/Offical/msrvtt_retrieval_tightTransf \
-#--visualize_dir ../Visualize/Log/Offical/msrvtt_retrieval_tightTransf \
+#--output_dir ../Model/Fusion_Removal/Offical/msrvtt_retrieval_tightTransf \
+#--log_dir ../Log/Fusion_Removal/Offical/msrvtt_retrieval_tightTransf \
+#--visualize_dir ../Visualize/Log/Fusion_Removal/Offical/msrvtt_retrieval_tightTransf \
 #--lr 1e-4 --max_words 32 --max_frames 12 --batch_size_val 16 \
 #--datatype msrvtt \
 #--expand_msrvtt_sentences  \
