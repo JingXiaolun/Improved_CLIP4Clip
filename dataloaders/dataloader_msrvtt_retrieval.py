@@ -304,6 +304,7 @@ class MSRVTT_TrainDataLoader(Dataset):
             video_id, caption = self.sentences_dict[idx]
         else:
             video_id, caption = self.csv['video_id'].values[idx], None
+        print(video_id, caption)
         pairs_text, pairs_mask, pairs_segment, choice_video_ids = self._get_text(video_id, caption)
         video, video_mask = self._get_rawvideo(choice_video_ids)
         return pairs_text, pairs_mask, pairs_segment, video, video_mask

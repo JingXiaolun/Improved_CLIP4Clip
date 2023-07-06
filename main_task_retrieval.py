@@ -468,7 +468,7 @@ def eval_epoch(epoch, args, model, test_dataloader, device, n_gpu, writer):
             sim_matrix = []
             for idx in range(len(parallel_outputs)):
                 sim_matrix += parallel_outputs[idx]
-                #print(idx, parallel_outputs[idx].shape)
+                #print(f'idx: {idx}, shape of parallel output {idx} is: {parallel_outputs[idx].shape}')
             sim_matrix = np.concatenate(tuple(sim_matrix), axis=0)
         else:
             sim_matrix = _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_visual_output_list)

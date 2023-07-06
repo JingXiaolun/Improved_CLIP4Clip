@@ -76,14 +76,14 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
                         help="choice a similarity header.")
-    
-    parser.add_argument('--se_block', action='store_true', help="whether to use squeeze and excitation relevant module to determine enhance or suppress some video frame representations. ")
-    parser.add_argument('--se_type', default='excitation', choices=['excitation', 'aggregation', 'excitation_aggregation', 'excitation_seq_aggregation', 'excitation_seq'],  help="determine the type of se, excitation denotes reweight video frame representations, aggregation denotes combine video frame representations based on their weight, excitation_aggregation denotes combination of excitation and aggregation, 'excitation_seq_aggregation' denote excitation + seqLSTM/seqTransf + aggregation, 'excitation_seq' denote excitation + seqLSTM/seqTransf + meanP. ")
-    parser.add_argument('--excitation_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_aggregation_block when se_type denotes excitation_aggregation")
-    parser.add_argument('--excitation_seq_aggregation_type', type=str, default='unity', choices=['unity','squeeze_expand', 'expand_squeeze'],  help="determine the type of excitation_seq_aggregation_block when se_type denotes excitation_seq_aggregation")
-    parser.add_argument('--se_pos', type=str, default='suffix', choices=['prefix', 'suffix'], help="determine the position of se_block in seqLSTM and serTransf. ")
-    parser.add_argument('--reduction_ratio', type=float,  default=1/6, choices=[1/6, 1/4, 1/3, 1/2, 2.0, 3.0, 4.0, 6.0], help="Hyper-parameter used in se_block") 
-
+   
+    parser.add_argument('--keep_rate', type=float, default=0.5, choices=[0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+                        help="keep rate denotes percent of saving frames")
+    parser.add_argument('--fuse_token', type=int, default=1, choices=[1, 0], 
+                        help='whether to fuse or remove inattentive tokens')
+    parser.add_argument('--video_output', type=str, default='meanP', choices=['meanP', 'cls'], 
+                        help='the source of video output, meanP means averaging reorganized frames, cls means that the output from cls is regarded as video representation')
+   
     parser.add_argument("--pretrained_clip_name", default="ViT-B/32", type=str, help="Choose a CLIP version")
 
     args = parser.parse_args()

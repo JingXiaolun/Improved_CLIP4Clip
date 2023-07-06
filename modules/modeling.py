@@ -253,13 +253,14 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             else:
                 print(f'use token removal module of keep rate {keep_rate}')
 
-            #self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+            # define cls_token from random initialization
+            self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
 
             ## define cls token generator from sequence output
-            self.cls_token_generator = nn.Sequential(
-                nn.Linear(embed_dim, embed_dim),
-                nn.GELU()
-                )
+            #self.cls_token_generator = nn.Sequential(
+            #    nn.Linear(embed_dim, embed_dim),
+            #    nn.GELU(),
+            #    )
 
             self.transformerClip = TransformerClip(width=transformer_width, layers=self.task_config.cross_num_hidden_layers,
                                                    heads=transformer_heads, keep_rate=keep_rate, fuse_token=fuse_token_flag)
@@ -402,34 +403,49 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             visual_seq_batch, visual_seq_length, visual_seq_dim = visual_output.size()  # [b_v, l_v, d_v]
             textual_seq_batch, textual_seq_length, textual_seq_dim = sequence_output.size()  # [b_t, 1, d_t]
 
-            cls_token = self.cls_token_generator(sequence_output)  # [b_t, 1, d_t] 
+            ####################################### cls_token from random initialization #########################################################
+            cls_token = self.cls_token.expand(visual_seq_batch, -1, -1)
+            cls_token = cls_token.to(device=visual_output.device)
+            ####################################### cls_token from random initialization #########################################################
 
+
+            ####################################### cls_token from sequence output #########################################################
+            #cls_token = self.cls_token_generator(sequence_output)   # [b_t, 1, d_t] 
             #cls_token = cls_token.unsqueeze(1).repeat(1, visual_seq_batch, 1, 1)  # [b_t, b_v, 1, d_t]
             #cls_token = cls_token.view(-1, textual_seq_length, textual_seq_dim)   # [b_t * b_v, 1, d_t]
-            cls_token = cls_token.to(device=visual_output.device)
+            #cls_token = cls_token.to(device=visual_output.device)
            
             #visual_output = visual_output.unsqueeze(0).repeat(textual_seq_batch, 1, 1, 1)  # [b_t, b_v, l_v, d_v]
             #visual_output = visual_output.view(-1, visual_seq_length, visual_seq_dim)  # [b_t * b_v, l_v, d_v]
+            ####################################### cls_token from sequence output #########################################################
 
             assert cls_token.shape[0]==visual_output.shape[0], f"The shape of cls_token is {cls_token.shape}, while the shape of visual_output is {visual_output.shape}."
-            visual_output = torch.cat([cls_token, visual_output], dim=1)  # N x (L+1) x D
+            concat_output = torch.cat([cls_token, visual_output], dim=1)  # N x (L+1) x D
+            concat_seq_batch, concat_seq_length, concat_seq_dim = concat_output.size()
 
-            position_ids = torch.arange(visual_seq_length + 1, dtype=torch.long, device=visual_output.device)
-            position_ids = position_ids.unsqueeze(0).expand(visual_seq_batch, -1)
+            position_ids = torch.arange(visual_seq_length + 1, dtype=torch.long, device=concat_output.device)
+            position_ids = position_ids.unsqueeze(0).expand(concat_seq_batch, -1)
             frame_position_embeddings = self.frame_position_embeddings(position_ids)
-            visual_output = visual_output + frame_position_embeddings
+            concat_output = concat_output + frame_position_embeddings
 
             extended_video_mask = (1.0 - video_mask.unsqueeze(1)) * -1000000.0
             extended_video_mask = extended_video_mask.expand(-1, video_mask.size(1), -1)
             # input: N x (L + 1) x D | output: N x (L + 1) x D
-            visual_output = self.transformerClip(visual_output, extended_video_mask)
+            concat_output = self.transformerClip(concat_output, extended_video_mask)
             
             if self.video_output=='meanP':
                 # utilize averaged result of frame representations as video representation
-                visual_output = visual_output[:, 1:].contiguous()
+                visual_output = concat_output[:, 1:]
             else:
                 # utilize cls token as the video representation
-                visual_output = visual_output[:, 0].contiguous()
+                visual_output = concat_output[:, 0]
+            visual_output = visual_output.contiguous()
+            
+            ####################################### cls_token from sequence output ###########################################################################
+            #visual_output = visual_output[::textual_seq_batch].contiguous()
+            #visual_output = visual_output[:visual_seq_batch].contiguous()
+            #visual_output = visual_output.view(textual_seq_batch, visual_seq_batch, visual_output.shape[-2], visual_output.shape[-1]).mean(dim=0).contiguous()
+            ####################################### cls_token from sequence output ###########################################################################
 
         if self.training:
             visual_output = allgather(visual_output, self.task_config)

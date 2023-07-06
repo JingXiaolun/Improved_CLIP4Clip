@@ -11,6 +11,8 @@ import tarfile
 import tempfile
 import shutil
 
+from visualizer import get_local
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -109,6 +111,7 @@ class Attention(nn.Module):
         self.keep_rate = keep_rate
         assert 0 < keep_rate <= 1, "keep_rate must > 0 and <= 1, got {0}".format(keep_rate)
 
+    @get_local('attn')
     def forward(self, x, keep_rate=None, attn_mask=None):
         if keep_rate is None:
             keep_rate = self.keep_rate
@@ -118,12 +121,22 @@ class Attention(nn.Module):
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         
-        # attn shape: [32, 8, 13, 13] | attn_mask_ shape: [256, 12, 12] (dimension mismatch)
-        #if attn_mask is not None:
-        #    attn_mask_ = attn_mask.repeat_interleave(self.num_heads, dim=0)
-        #    #print(attn.shape, attn_mask_.shape)
-        #    attn = attn.masked_fill(attn_mask_ == 0, -1e9)
+        # attn shape: [32, 8, 13, 13] | attn_mask_ shape: [32, 8, 13, 13] (dimension mismatch)
+        if attn_mask is not None:
+            attn_mask_ = attn_mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)
+            attn = attn.masked_fill(attn_mask_ == 0, -1e9)
         attn = attn.softmax(dim=-1)
+
+        ################################################# save attn in .pt format ##############################################################################################
+        ## attn_complete.pt refers to attention between compelete sequence, attn_pruning.pt refers to attention between pruning sequence
+        #prefix_dir = '/public/home/jinxl/jinxl/research/Experiment/Improved_CLIP4CLip/Code/visualize/attention'
+        #if attn.shape[-2]==13:
+        #    attn_path = prefix_dir + '/' + 'attn_complete.pt'
+        #else:
+        #    attn_path = prefix_dir + '/' + 'attn_pruning.pt'
+        #torch.save(attn, attn_path)
+        ################################################# save attn in .pt format ##############################################################################################
+        
         attn = self.attn_drop(attn)
 
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
@@ -140,6 +153,13 @@ class Attention(nn.Module):
             cls_attn = cls_attn.mean(dim=1)  # [B, N-1]
             _, idx = torch.topk(cls_attn, left_tokens, dim=1, largest=True, sorted=True)  # [B, left_tokens]
             index = idx.unsqueeze(-1).expand(-1, -1, C)  # [B, left_tokens, C]
+
+
+
+
+
+            
+            
             return x, index, idx, cls_attn, left_tokens
         return  x, None, None, None, left_tokens
 
@@ -164,7 +184,10 @@ class ResidualAttentionBlock(nn.Module):
     def forward(self, para_tuple: tuple):
         # x: torch.Tensor, attn_mask: torch.Tensor
         x, attn_mask = para_tuple
-
+        if x.shape[1]!=attn_mask.shape[1]:
+            
+            
+      
         # step1: get output from self.attn and implement residual operation 
         '''
         tmp: shape of [B, N, C]
