@@ -367,10 +367,14 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         return text_out
 
     def _mean_pooling_for_similarity_visual(self, visual_output, video_mask,):
+        # shape of video_mask_un: [B, N, 1]
         video_mask_un = video_mask.to(dtype=torch.float).unsqueeze(-1)
+        # shape of visual_output: [B, N, C]
         visual_output = visual_output * video_mask_un
+        # shape of video_mask_un_sum: [B, 1]
         video_mask_un_sum = torch.sum(video_mask_un, dim=1, dtype=torch.float)
         video_mask_un_sum[video_mask_un_sum == 0.] = 1.
+        # shape of video_out: [B, C]
         video_out = torch.sum(visual_output, dim=1) / video_mask_un_sum
         return video_out
 
@@ -408,17 +412,6 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             cls_token = cls_token.to(device=visual_output.device)
             ####################################### cls_token from random initialization #########################################################
 
-
-            ####################################### cls_token from sequence output #########################################################
-            #cls_token = self.cls_token_generator(sequence_output)   # [b_t, 1, d_t] 
-            #cls_token = cls_token.unsqueeze(1).repeat(1, visual_seq_batch, 1, 1)  # [b_t, b_v, 1, d_t]
-            #cls_token = cls_token.view(-1, textual_seq_length, textual_seq_dim)   # [b_t * b_v, 1, d_t]
-            #cls_token = cls_token.to(device=visual_output.device)
-           
-            #visual_output = visual_output.unsqueeze(0).repeat(textual_seq_batch, 1, 1, 1)  # [b_t, b_v, l_v, d_v]
-            #visual_output = visual_output.view(-1, visual_seq_length, visual_seq_dim)  # [b_t * b_v, l_v, d_v]
-            ####################################### cls_token from sequence output #########################################################
-
             assert cls_token.shape[0]==visual_output.shape[0], f"The shape of cls_token is {cls_token.shape}, while the shape of visual_output is {visual_output.shape}."
             concat_output = torch.cat([cls_token, visual_output], dim=1)  # N x (L+1) x D
             concat_seq_batch, concat_seq_length, concat_seq_dim = concat_output.size()
@@ -428,10 +421,26 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             frame_position_embeddings = self.frame_position_embeddings(position_ids)
             concat_output = concat_output + frame_position_embeddings
 
-            extended_video_mask = (1.0 - video_mask.unsqueeze(1)) * -1000000.0
-            extended_video_mask = extended_video_mask.expand(-1, video_mask.size(1), -1)
+            ################################################ extended_video_mask Formation #######################################################
+            # shape conversion of extended_video_mask: [B, 1, 12] -> [B, 12, 12] -> [B, 13, 13]
+            #extended_video_mask = (1.0 - video_mask.unsqueeze(1)) * -1000000.0
+            ''' Description
+            The masked frame location is equal to 0, and the normal frame location is equal to 1
+            '''
+            extended_video_mask = video_mask.unsqueeze(1).expand(-1, video_mask.size(1), -1)
+
+            # padding constant in top and left corner to introduce cls_token
+            padding_operation = nn.ConstantPad2d((1, 0, 1, 0), 1)
+            extended_video_mask = padding_operation(extended_video_mask)
+            
+            for i in range(visual_seq_batch):
+                if True in (video_mask[i]==0):
+                    extended_video_mask[i][0][1:][video_mask[i]==0] = 0
+            ################################################ extended_video_mask Formation #######################################################
+
             # input: N x (L + 1) x D | output: N x (L + 1) x D
-            concat_output = self.transformerClip(concat_output, extended_video_mask)
+            (concat_output, video_mask_new) = self.transformerClip(concat_output, extended_video_mask)
+            video_mask_new = video_mask_new[:, 0, 1:].contiguous()
             
             if self.video_output=='meanP':
                 # utilize averaged result of frame representations as video representation
@@ -441,22 +450,16 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
                 visual_output = concat_output[:, 0]
             visual_output = visual_output.contiguous()
             
-            ####################################### cls_token from sequence output ###########################################################################
-            #visual_output = visual_output[::textual_seq_batch].contiguous()
-            #visual_output = visual_output[:visual_seq_batch].contiguous()
-            #visual_output = visual_output.view(textual_seq_batch, visual_seq_batch, visual_output.shape[-2], visual_output.shape[-1]).mean(dim=0).contiguous()
-            ####################################### cls_token from sequence output ###########################################################################
-
         if self.training:
             visual_output = allgather(visual_output, self.task_config)
             video_mask = allgather(video_mask, self.task_config)
+            video_mask_new = allgather(video_mask_new, self.task_config)
             sequence_output = allgather(sequence_output, self.task_config)
             torch.distributed.barrier()
 
         if visual_output.dim()==3:
             visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
-            #visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask)
-            visual_output = visual_output.mean(dim=1)
+            visual_output = self._mean_pooling_for_similarity_visual(visual_output, video_mask_new)
         visual_output = visual_output / visual_output.norm(dim=-1, keepdim=True)
 
         sequence_output = sequence_output.squeeze(1)

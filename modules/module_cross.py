@@ -112,20 +112,23 @@ class Attention(nn.Module):
         assert 0 < keep_rate <= 1, "keep_rate must > 0 and <= 1, got {0}".format(keep_rate)
 
     @get_local('attn')
-    def forward(self, x, keep_rate=None, attn_mask=None):
-        if keep_rate is None:
-            keep_rate = self.keep_rate
+    def forward(self, x, attn_mask=None):
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         
-        # attn shape: [32, 8, 13, 13] | attn_mask_ shape: [32, 8, 13, 13] (dimension mismatch)
+        # attn shape: [32, 8, 13, 13] | attn_mask shape: [32, 13, 13] | attn_mask_ shape: [32, 8, 13, 13]
         if attn_mask is not None:
             attn_mask_ = attn_mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)
             attn = attn.masked_fill(attn_mask_ == 0, -1e9)
         attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
 
         ################################################# save attn in .pt format ##############################################################################################
         ## attn_complete.pt refers to attention between compelete sequence, attn_pruning.pt refers to attention between pruning sequence
@@ -136,32 +139,49 @@ class Attention(nn.Module):
         #    attn_path = prefix_dir + '/' + 'attn_pruning.pt'
         #torch.save(attn, attn_path)
         ################################################# save attn in .pt format ##############################################################################################
-        
-        attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-        x = self.proj(x)
-        x = self.proj_drop(x)
-
+        keep_rate = self.keep_rate
         left_tokens = N - 1
-        if self.keep_rate < 1 and keep_rate < 1:  # double check the keep rate
-            left_tokens = math.ceil(keep_rate * (N - 1))
-            if left_tokens == N - 1:
-                return x, None, None, None, left_tokens
-            assert left_tokens >= 1
-            cls_attn = attn[:, :, 0, 1:]  # [B, H, N-1]
-            cls_attn = cls_attn.mean(dim=1)  # [B, N-1]
-            _, idx = torch.topk(cls_attn, left_tokens, dim=1, largest=True, sorted=True)  # [B, left_tokens]
-            index = idx.unsqueeze(-1).expand(-1, -1, C)  # [B, left_tokens, C]
+        if keep_rate < 1:  
+            left_tokens_boundary = math.ceil(keep_rate * (N - 1))
+            assert left_tokens_boundary >= 1
+            if left_tokens_boundary == N - 1:
+                return x, None, None, left_tokens_boundary
 
+            idx_list, index_list = [], []    
+            for i in range(B):
+                # shape: [H, N, N]
+                sub_attn_mask_= attn_mask_[i]
+                # shape: [N-1]
+                sub_attn_mask_row = sub_attn_mask_[0, 0, 1:]
 
+                # shape: [H, N-1]
+                sub_cls_attn_all = attn[i][:, 0, 1:]
+                valid_index = (sub_attn_mask_row!=0).expand(self.num_heads, -1)
 
+                # shape: [H, M] -> [M]
+                sub_cls_attn_valid = sub_cls_attn_all[valid_index].view(self.num_heads, -1)
+                sub_cls_attn_valid = sub_cls_attn_valid.mean(dim=0) 
+                valid_tokens_num = sub_cls_attn_valid.shape[0]
 
+                left_tokens = math.ceil(valid_tokens_num * keep_rate)
+                _, sub_idx = torch.topk(sub_cls_attn_valid, left_tokens, dim=0, largest=True, sorted=True)  # [left_tokens]
 
-            
-            
-            return x, index, idx, cls_attn, left_tokens
-        return  x, None, None, None, left_tokens
+                left_tokens_remaining = left_tokens_boundary - left_tokens
+                sub_idx_remaining = (torch.ones(left_tokens_remaining)*1e9).to(sub_idx.device)
+                sub_idx_padding = torch.cat([sub_idx, sub_idx_remaining], dim=0) # torch.tensor([1, 2, 3, 4, 5, 1e9, 1e9 ...])
+                assert sub_idx_padding.shape[0] == left_tokens_boundary, 'the dimension of idx must be same through padding'
+                    
+                sub_idx = sub_idx_padding.unsqueeze(0) # shape: [1, left_tokens_boundary]
+                sub_index = sub_idx_padding.unsqueeze(0).unsqueeze(-1).expand(-1, -1, C) # shape: [1, left_tokens_boundary, C]
+
+                idx_list.append(sub_idx)
+                index_list.append(sub_index)
+
+            idx = torch.cat(idx_list, dim=0) # shape: [B, left_tokens_boundary]
+            index = torch.cat(index_list, dim=0) # shape: [B, left_tokens_boundary, C]
+            return x, index, idx, left_tokens_boundary
+        return  x, None, None, left_tokens
 
 class ResidualAttentionBlock(nn.Module):
     def __init__(self, d_model: int, n_head: int, keep_rate: float, fuse_token: bool):
@@ -178,47 +198,103 @@ class ResidualAttentionBlock(nn.Module):
         self.keep_rate = keep_rate
         self.fuse_token = fuse_token
     
+        self.padding_operation = nn.ConstantPad2d((1, 0, 1, 0), 1)
+
     #def attention(self, x: torch.Tensor, attn_mask: torch.Tensor, get_idx: False):
     #    attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
 
     def forward(self, para_tuple: tuple):
         # x: torch.Tensor, attn_mask: torch.Tensor
         x, attn_mask = para_tuple
-        if x.shape[1]!=attn_mask.shape[1]:
-            
-            
       
         # step1: get output from self.attn and implement residual operation 
         '''
         tmp: shape of [B, N, C]
-        index: shape of [B, left_tokens, C]
-        idx: shape of [B, left_tokens]
+        index: shape of [B, left_tokens_boundary, C]
+        idx: shape of [B, left_tokens_boundary]
         cls_attn: shape of [B, N-1]
         left_tokens: shape of [1] 
         '''
-        tmp, index, idx, cls_attn, left_tokens = self.attn(self.ln_1(x), self.keep_rate, attn_mask)
+        tmp, index, idx, left_tokens_boundary = self.attn(self.ln_1(x), attn_mask)
         x = x + tmp
 
-        # step2: tokens fusion or removal 
+        # step2: tokens removal 
         if index is not None:
             B, N, C = x.shape
-            non_cls = x[:, 1:]
-            x_others = torch.gather(non_cls, dim=1, index=index)  # [B, left_tokens, C]
 
-            if self.fuse_token:
-                compl = complement_idx(idx, N - 1)  # [B, N-1-left_tokens]
-                non_topk = torch.gather(non_cls, dim=1, index=compl.unsqueeze(-1).expand(-1, -1, C))  # [B, N-1-left_tokens, C]
+            sub_x_list = []
+            attn_mask_flag_list = []
+            for i in range(B):
+                sub_x = x[i]  # shape: [N, C]
+                sub_idx = idx[i]  # shape: [left_tokens_boundary]
+                sub_index = index[i]  # shape: [left_tokens_boundary, C]
+                sub_gather_index = sub_index[sub_index<1e4].view(-1, C) # shape: [valid_token_num, C]
 
-                non_topk_attn = torch.gather(cls_attn, dim=1, index=compl)  # [B, N-1-left_tokens]
-                extra_token = torch.sum(non_topk * non_topk_attn.unsqueeze(-1), dim=1, keepdim=True)  # [B, 1, C]
-                x = torch.cat([x[:, 0:1], x_others, extra_token], dim=1)
-            else:
-                x = torch.cat([x[:, 0:1], x_others], dim=1)
+                #print(f'sub_x[0]: {sub_x[0]}')
+                #print(f'sub_idx: {sub_idx}')
+                #print(f'sub_index: {sub_index}')
+
+                invalid_token_num = torch.sum(sub_idx > 1e4).item()
+                if not invalid_token_num:
+                    # shape: [N-1, C]
+                    sub_x_non_cls = sub_x[1:]
+                else:
+                    # shape: [N-1-invalid_token_num, C]
+                    sub_x_non_cls = sub_x[1:-invalid_token_num]
+
+                sub_x_others = torch.gather(sub_x_non_cls, dim=0, index=sub_gather_index.type(torch.int64))
+                sub_x_remaining = torch.zeros(left_tokens_boundary - sub_x_others.shape[0]).unsqueeze(-1).expand(-1, C)
+                sub_x_remaining = sub_x_remaining.to(sub_x_others.device)
+
+                sub_x_noncls = torch.cat([sub_x_others, sub_x_remaining], dim=0)  # shape: [left_tokens_boundary, C]
+                attn_mask_flag_list.append((sub_x_noncls==0)[:, 0].unsqueeze(0))  # shape: [1, left_tokens_boundary]
+
+                #print(f'i={i}')
+                #print(f'sub_x[0]: {sub_x[0]}')
+                #print(f'sub_x_others: {sub_x_others}')
+                #print(f'sub_x_remaining: {sub_x_remaining}')
+
+                sub_x_ = torch.cat([sub_x[0].unsqueeze(0), sub_x_others, sub_x_remaining], dim=0)  # shape: [1 + left_tokens_boundary, C]
+                sub_x_ = sub_x_.unsqueeze(0)  # shape: [1, 1 + left_tokens_boundary, C]
+
+                sub_x_list.append(sub_x_)
+
+            try:
+                x = torch.cat(sub_x_list, dim=0)  # shape: [B, 1 + left_tokens_boundary, C]
+            except Exception as e:
+                print(e)
+            attn_mask_flag = torch.cat(attn_mask_flag_list, dim=0)  # shape: [B, left_tokens_boundary]
+
+            ####################################################################################################################
+            #if self.fuse_token:
+            #    compl = complement_idx(idx, N - 1)  # [B, N-1-left_tokens]
+            #    non_topk = torch.gather(non_cls, dim=1, index=compl.unsqueeze(-1).expand(-1, -1, C))  # [B, N-1-left_tokens, C]
+
+            #    non_topk_attn = torch.gather(cls_attn, dim=1, index=compl)  # [B, N-1-left_tokens]
+            #    extra_token = torch.sum(non_topk * non_topk_attn.unsqueeze(-1), dim=1, keepdim=True)  # [B, 1, C]
+            #    x = torch.cat([x[:, 0:1], x_others, extra_token], dim=1)
+            #else:
+            #    x = torch.cat([x[:, 0:1], x_others], dim=1)
+            ####################################################################################################################
 
         # step3: LayerNorm + MLP (Residual Operation)
         x = x + self.mlp(self.ln_2(x))
-        n_tokens = x.shape[1] - 1
 
+        # step4: update attn_mask (corresponding to purned visual output)
+        attn_mask_new = torch.ones(B, left_tokens_boundary) # shape: [B, left_tokens_boundary]
+        attn_mask_new = attn_mask_new.to(x.device)
+
+        attn_mask_new[attn_mask_flag] = 0  # shape: [B, left_tokens_boundary]
+        attn_mask_new = attn_mask_new.unsqueeze(1).expand(-1, left_tokens_boundary, -1)  # [B, left_tokens_boundary, left_tokens_boundary]
+        
+        ## padding constant in top and left corner to introduce cls_token
+        attn_mask_new = self.padding_operation(attn_mask_new)  # [B, left_tokens_boundary + 1, left_tokens_boundary + 1]
+    
+        for i in range(B):
+            sub_attn_mask_new = attn_mask_new[i]  # shape: [left_tokens_boundary + 1, left_tokens_boundary + 1]
+            if True in (sub_attn_mask_new==0):
+                attn_mask_new[i, 0, 1:][sub_attn_mask_new[1, 1:]==0] = 0
+        attn_mask = attn_mask_new
         return (x, attn_mask)
 
 class Transformer(nn.Module):
@@ -229,7 +305,9 @@ class Transformer(nn.Module):
         self.resblocks = nn.Sequential(*[ResidualAttentionBlock(width, heads, keep_rate, fuse_token) for _ in range(layers)])
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor):
-        return self.resblocks((x, attn_mask))[0]
+        for i in range(self.layers):
+            (x, attn_mask) = self.resblocks[i]((x, attn_mask))
+        return (x, attn_mask)
 
 class CrossEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings.
