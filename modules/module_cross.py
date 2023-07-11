@@ -157,6 +157,8 @@ class Attention(nn.Module):
 
                 # shape: [H, N-1]
                 sub_cls_attn_all = attn[i][:, 0, 1:]
+
+                # shape: [H, M]
                 valid_index = (sub_attn_mask_row!=0).expand(self.num_heads, -1)
 
                 # shape: [H, M] -> [M]
@@ -165,11 +167,13 @@ class Attention(nn.Module):
                 valid_tokens_num = sub_cls_attn_valid.shape[0]
 
                 left_tokens = math.ceil(valid_tokens_num * keep_rate)
+
+                # sub_idx: torch.tensor([2, 6, 9, 4, 1, 7]) (shape: [left_tokens])
                 _, sub_idx = torch.topk(sub_cls_attn_valid, left_tokens, dim=0, largest=True, sorted=True)  # [left_tokens]
 
                 left_tokens_remaining = left_tokens_boundary - left_tokens
                 sub_idx_remaining = (torch.ones(left_tokens_remaining)*1e9).to(sub_idx.device)
-                sub_idx_padding = torch.cat([sub_idx, sub_idx_remaining], dim=0) # torch.tensor([1, 2, 3, 4, 5, 1e9, 1e9 ...])
+                sub_idx_padding = torch.cat([sub_idx, sub_idx_remaining], dim=0) # torch.tensor([2, 6, 9, 4, 1, 7, 1e9, 1e9]) (e.g. M=10, keep_rate=0.6)
                 assert sub_idx_padding.shape[0] == left_tokens_boundary, 'the dimension of idx must be same through padding'
                     
                 sub_idx = sub_idx_padding.unsqueeze(0) # shape: [1, left_tokens_boundary]
@@ -200,9 +204,6 @@ class ResidualAttentionBlock(nn.Module):
     
         self.padding_operation = nn.ConstantPad2d((1, 0, 1, 0), 1)
 
-    #def attention(self, x: torch.Tensor, attn_mask: torch.Tensor, get_idx: False):
-    #    attn_mask_ = attn_mask.repeat_interleave(self.n_head, dim=0)
-
     def forward(self, para_tuple: tuple):
         # x: torch.Tensor, attn_mask: torch.Tensor
         x, attn_mask = para_tuple
@@ -212,7 +213,6 @@ class ResidualAttentionBlock(nn.Module):
         tmp: shape of [B, N, C]
         index: shape of [B, left_tokens_boundary, C]
         idx: shape of [B, left_tokens_boundary]
-        cls_attn: shape of [B, N-1]
         left_tokens: shape of [1] 
         '''
         tmp, index, idx, left_tokens_boundary = self.attn(self.ln_1(x), attn_mask)
@@ -230,10 +230,6 @@ class ResidualAttentionBlock(nn.Module):
                 sub_index = index[i]  # shape: [left_tokens_boundary, C]
                 sub_gather_index = sub_index[sub_index<1e4].view(-1, C) # shape: [valid_token_num, C]
 
-                #print(f'sub_x[0]: {sub_x[0]}')
-                #print(f'sub_idx: {sub_idx}')
-                #print(f'sub_index: {sub_index}')
-
                 invalid_token_num = torch.sum(sub_idx > 1e4).item()
                 if not invalid_token_num:
                     # shape: [N-1, C]
@@ -249,20 +245,12 @@ class ResidualAttentionBlock(nn.Module):
                 sub_x_noncls = torch.cat([sub_x_others, sub_x_remaining], dim=0)  # shape: [left_tokens_boundary, C]
                 attn_mask_flag_list.append((sub_x_noncls==0)[:, 0].unsqueeze(0))  # shape: [1, left_tokens_boundary]
 
-                #print(f'i={i}')
-                #print(f'sub_x[0]: {sub_x[0]}')
-                #print(f'sub_x_others: {sub_x_others}')
-                #print(f'sub_x_remaining: {sub_x_remaining}')
-
-                sub_x_ = torch.cat([sub_x[0].unsqueeze(0), sub_x_others, sub_x_remaining], dim=0)  # shape: [1 + left_tokens_boundary, C]
+                sub_x_ = torch.cat([sub_x[0].unsqueeze(0), sub_x_noncls], dim=0)  # shape: [1 + left_tokens_boundary, C]
                 sub_x_ = sub_x_.unsqueeze(0)  # shape: [1, 1 + left_tokens_boundary, C]
 
                 sub_x_list.append(sub_x_)
 
-            try:
-                x = torch.cat(sub_x_list, dim=0)  # shape: [B, 1 + left_tokens_boundary, C]
-            except Exception as e:
-                print(e)
+            x = torch.cat(sub_x_list, dim=0)  # shape: [B, 1 + left_tokens_boundary, C]
             attn_mask_flag = torch.cat(attn_mask_flag_list, dim=0)  # shape: [B, left_tokens_boundary]
 
             ####################################################################################################################
@@ -281,20 +269,21 @@ class ResidualAttentionBlock(nn.Module):
         x = x + self.mlp(self.ln_2(x))
 
         # step4: update attn_mask (corresponding to purned visual output)
-        attn_mask_new = torch.ones(B, left_tokens_boundary) # shape: [B, left_tokens_boundary]
-        attn_mask_new = attn_mask_new.to(x.device)
+        if index is not None:
+            attn_mask_new = torch.ones(B, left_tokens_boundary) # shape: [B, left_tokens_boundary]
+            attn_mask_new = attn_mask_new.to(x.device)
 
-        attn_mask_new[attn_mask_flag] = 0  # shape: [B, left_tokens_boundary]
-        attn_mask_new = attn_mask_new.unsqueeze(1).expand(-1, left_tokens_boundary, -1)  # [B, left_tokens_boundary, left_tokens_boundary]
+            attn_mask_new[attn_mask_flag] = 0  # shape: [B, left_tokens_boundary]
+            attn_mask_new = attn_mask_new.unsqueeze(1).expand(-1, left_tokens_boundary, -1)  # [B, left_tokens_boundary, left_tokens_boundary]
         
-        ## padding constant in top and left corner to introduce cls_token
-        attn_mask_new = self.padding_operation(attn_mask_new)  # [B, left_tokens_boundary + 1, left_tokens_boundary + 1]
+            ## padding constant in top and left corner to introduce cls_token
+            attn_mask_new = self.padding_operation(attn_mask_new)  # [B, left_tokens_boundary + 1, left_tokens_boundary + 1]
     
-        for i in range(B):
-            sub_attn_mask_new = attn_mask_new[i]  # shape: [left_tokens_boundary + 1, left_tokens_boundary + 1]
-            if True in (sub_attn_mask_new==0):
-                attn_mask_new[i, 0, 1:][sub_attn_mask_new[1, 1:]==0] = 0
-        attn_mask = attn_mask_new
+            for i in range(B):
+                sub_attn_mask_new = attn_mask_new[i]  # shape: [left_tokens_boundary + 1, left_tokens_boundary + 1]
+                if True in (sub_attn_mask_new==0):
+                    attn_mask_new[i, 0, 1:][sub_attn_mask_new[1, 1:]==0] = 0
+            attn_mask = attn_mask_new  # shape: [B, left_tokens_boundary + 1, left_tokens_boundary + 1]
         return (x, attn_mask)
 
 class Transformer(nn.Module):

@@ -422,7 +422,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             concat_output = concat_output + frame_position_embeddings
 
             ################################################ extended_video_mask Formation #######################################################
-            # shape conversion of extended_video_mask: [B, 1, 12] -> [B, 12, 12] -> [B, 13, 13]
+            # shape conversion of extended_video_mask: [B, 12] -> [B, 1, 12] -> [B, 12, 12] -> [B, 13, 13]
             #extended_video_mask = (1.0 - video_mask.unsqueeze(1)) * -1000000.0
             ''' Description
             The masked frame location is equal to 0, and the normal frame location is equal to 1
@@ -435,10 +435,10 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             
             for i in range(visual_seq_batch):
                 if True in (video_mask[i]==0):
-                    extended_video_mask[i][0][1:][video_mask[i]==0] = 0
+                    extended_video_mask[i, 0, 1:][video_mask[i]==0] = 0
             ################################################ extended_video_mask Formation #######################################################
 
-            # input: N x (L + 1) x D | output: N x (L + 1) x D
+            # concat_input: B x (M + 1) x D | video_mask_new: B x (M + 1) x (M + 1) -> B x M
             (concat_output, video_mask_new) = self.transformerClip(concat_output, extended_video_mask)
             video_mask_new = video_mask_new[:, 0, 1:].contiguous()
             
