@@ -76,14 +76,6 @@ def get_args(description='CLIP4Clip on Retrieval Task'):
     parser.add_argument('--sim_header', type=str, default="meanP",
                         choices=["meanP", "seqLSTM", "seqTransf", "tightTransf"],
                         help="choice a similarity header.")
-   
-    parser.add_argument('--keep_rate', type=float, default=0.5, choices=[0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-                        help="keep rate denotes percent of saving frames")
-    parser.add_argument('--fuse_token', type=int, default=1, choices=[1, 0], 
-                        help='whether to fuse or remove inattentive tokens')
-    parser.add_argument('--video_output', type=str, default='meanP', choices=['meanP', 'cls'], 
-                        help='the source of video output, meanP means averaging reorganized frames, cls means that the output from cls is regarded as video representation')
-   
     parser.add_argument("--pretrained_clip_name", default="ViT-B/32", type=str, help="Choose a CLIP version")
 
     args = parser.parse_args()
